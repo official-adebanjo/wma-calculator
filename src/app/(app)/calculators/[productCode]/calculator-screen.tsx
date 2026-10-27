@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { type CalculationRequestPayload, CalculatorForm } from "@/components/calculator-form";
+import { NotFoundPanel } from "@/components/not-found-panel";
 import { PageHeader } from "@/components/page-header";
 import { QaPanel } from "@/components/qa-panel";
 import { ResultView } from "@/components/result-view";
@@ -147,6 +148,17 @@ export function CalculatorScreen({ productCode }: { productCode: string }) {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [request, setRequest] = useState<CalculationRequestPayload | null>(null);
 
+  if (error?.status === 404) {
+    return (
+      <NotFoundPanel
+        className="py-10"
+        title="Product not found"
+        description="There is no calculator for this product code. Choose a product from the catalogue."
+        lookupLabel="Product code"
+        lookupValue={productCode}
+      />
+    );
+  }
   if (error) {
     return (
       <Alert variant="destructive">

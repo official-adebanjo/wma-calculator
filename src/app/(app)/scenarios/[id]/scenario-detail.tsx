@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
 import { MoneyInput } from "@/components/money-input";
+import { NotFoundPanel } from "@/components/not-found-panel";
 import { PageHeader } from "@/components/page-header";
 import { ResultView } from "@/components/result-view";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -143,6 +144,17 @@ export function ScenarioDetail({ id }: { id: string }) {
   const scenario = updated ?? data?.scenario ?? null;
   const [copied, setCopied] = useState(false);
 
+  if (error?.status === 404) {
+    return (
+      <NotFoundPanel
+        className="py-10"
+        title="Scenario not found"
+        description="This scenario doesn't exist, or it belongs to another tester and isn't shared with your role."
+        lookupLabel="Scenario ID"
+        lookupValue={id}
+      />
+    );
+  }
   if (error) {
     return (
       <Alert variant="destructive">
