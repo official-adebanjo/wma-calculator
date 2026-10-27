@@ -17,8 +17,9 @@ function isBlank(v: unknown): boolean {
 function fieldSchema(field: InputFieldDef) {
   return z.unknown().transform((raw, ctx) => {
     if (isBlank(raw)) {
-      if (field.required) ctx.addIssue({ code: "custom", message: `${field.label} is required.` });
-      return undefined;
+      if (!field.required) return undefined;
+      ctx.addIssue({ code: "custom", message: `${field.label} is required.` });
+      return z.NEVER;
     }
 
     switch (field.kind) {
@@ -80,10 +81,13 @@ function fieldSchema(field: InputFieldDef) {
   });
 }
 
-export function buildInputSchema(product: ProductDefinition) {
-  const shape: Record<string, ReturnType<typeof fieldSchema>> = {};
-  for (const field of product.fields) shape[field.name] = fieldSchema(field);
-  return z.object(shape);
+export function buildInputSchema(product: Pick<ProductDefinition, "fields">) {
+  const shape: Record<string, z.ZodType> = {};
+  for (const field of product.fields) shape[field.name] = field.required ? fieldSchema(field) : fieldSchema(field).optional();
+  // Missing keys are treated as blank so required-field messages are consistent.
+  const filled = (v: unknown) =>
+    v && typeof v === "object" ? { ...Object.fromEntries(product.fields.map((f) => [f.name, ""])), ...(v as object) } : v;
+  return z.preprocess(filled, z.object(shape));
 }
 
 /** QA-only options. A rate override is always labelled in the result. */

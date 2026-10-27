@@ -21,3 +21,7 @@ next-env.d.ts
 /coverage
 /test-results
 /playwright-report
+npm-install.log
+
+# local secrets — never commit
+recovery-codes.txt

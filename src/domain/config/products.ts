@@ -1,3 +1,5 @@
+// Rates are internal: this module must never be bundled into client code.
+import "server-only";
 import type {
   ProductConfigVersion,
   ProductDefinition,
