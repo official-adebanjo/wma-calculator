@@ -1,7 +1,7 @@
 "use client";
 
 import { FirebaseError } from "firebase/app";
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
 import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -11,7 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BrandMark } from "@/components/brand-mark";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { api, ApiRequestError } from "@/lib/api-client";
 import { clientAuth } from "@/lib/firebase/client";
+import { fullName, profileNameSchema, type UserProfile } from "@/lib/profile";
 
 const MESSAGES: Record<string, string> = {
   "auth/invalid-credential": "Email or password is incorrect.",
@@ -23,19 +25,22 @@ const MESSAGES: Record<string, string> = {
 };
 
 function LoginForm() {
-  const { user, loading } = useAuth();
+  const { user, loading, setProfile } = useAuth();
   const router = useRouter();
   const next = useSearchParams().get("next");
   const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) router.replace(target);
-  }, [loading, user, router, target]);
+    // Wait until sign-up has finished saving the name before leaving the page.
+    if (!loading && user && !busy) router.replace(target);
+  }, [loading, user, busy, router, target]);
 
   async function run(fn: () => Promise<unknown>) {
     setError(null);
@@ -43,7 +48,7 @@ function LoginForm() {
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof FirebaseError ? (MESSAGES[e.code] ?? e.message) : "Sign-in failed.");
+      setError(e instanceof FirebaseError ? (MESSAGES[e.code] ?? e.message) : e instanceof ApiRequestError ? e.message : "Sign-in failed.");
     } finally {
       setBusy(false);
     }
@@ -69,13 +74,35 @@ function LoginForm() {
               className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                run(() =>
-                  mode === "signin"
-                    ? signInWithEmailAndPassword(clientAuth(), email, password)
-                    : createUserWithEmailAndPassword(clientAuth(), email, password),
-                );
+                if (mode === "signin") {
+                  run(() => signInWithEmailAndPassword(clientAuth(), email, password));
+                  return;
+                }
+                const names = profileNameSchema.safeParse({ firstName, lastName });
+                if (!names.success) {
+                  setError(names.error.issues[0]?.message ?? "Enter your first and last name.");
+                  return;
+                }
+                run(async () => {
+                  const cred = await createUserWithEmailAndPassword(clientAuth(), email, password);
+                  await updateProfile(cred.user, { displayName: fullName(names.data.firstName, names.data.lastName) });
+                  const { data } = await api<{ user: UserProfile }>("/api/me", { method: "PATCH", body: JSON.stringify(names.data) });
+                  setProfile(data.user);
+                });
               }}
             >
+              {mode === "signup" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="firstName">First name</Label>
+                    <Input id="firstName" autoComplete="given-name" required maxLength={60} value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="lastName">Last name</Label>
+                    <Input id="lastName" autoComplete="family-name" required maxLength={60} value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

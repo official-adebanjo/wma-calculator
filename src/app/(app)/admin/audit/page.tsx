@@ -7,11 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
+import { personLabel } from "@/lib/profile";
 import { useApi } from "@/lib/use-api";
 
 interface AuditEvent {
   id: string;
   userEmail: string | null;
+  userName?: string | null;
   userId: string;
   action: string;
   entityType: string;
@@ -58,7 +60,9 @@ export default function AuditPage() {
                 {data.events.map((e) => (
                   <TableRow key={e.id} className="align-top">
                     <TableCell className="text-xs whitespace-nowrap">{formatDateTime(e.createdAt)}</TableCell>
-                    <TableCell className="text-xs">{e.userEmail ?? e.userId}</TableCell>
+                    <TableCell className="text-xs" title={e.userEmail ?? undefined}>
+                      {personLabel(e)}
+                    </TableCell>
                     <TableCell className="font-mono text-xs">{e.action}</TableCell>
                     <TableCell className="font-mono text-xs">
                       {e.entityType}/{e.entityId}

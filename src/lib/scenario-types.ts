@@ -33,6 +33,8 @@ export interface Scenario {
   name: string;
   userId: string;
   userEmail: string | null;
+  /** Owner's display name at save time; absent on scenarios saved before names existed. */
+  userName?: string | null;
   productCode: string;
   productName: string;
   status: CalculationResult["status"];

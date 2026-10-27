@@ -24,6 +24,7 @@ export async function writeAudit(event: {
     .add({
       userId: event.user.uid,
       userEmail: event.user.email,
+      userName: event.user.displayName,
       action: event.action,
       entityType: event.entityType,
       entityId: event.entityId,
@@ -47,6 +48,7 @@ export async function createScenario(user: SessionUser, name: string, result: Ca
     name,
     userId: user.uid,
     userEmail: user.email,
+    userName: user.displayName,
     productCode: result.productCode,
     productName: result.productName,
     status: result.status,
@@ -63,7 +65,7 @@ export async function createScenario(user: SessionUser, name: string, result: Ca
   return scenario;
 }
 
-const LIST_FIELDS = ["id", "name", "userId", "userEmail", "productCode", "productName", "status", "configVersionId", "calculationId", "createdAt", "result", "qaNotes"];
+const LIST_FIELDS = ["id", "name", "userId", "userEmail", "userName", "productCode", "productName", "status", "configVersionId", "calculationId", "createdAt", "result", "qaNotes"];
 
 export async function listScenarios(user: SessionUser, limit = 200): Promise<ScenarioListItem[]> {
   const col = adminDb().collection(SCENARIOS);
@@ -96,7 +98,7 @@ export async function updateQaNotes(user: SessionUser, id: string, input: QaNote
     throw new ApiError(403, "FORBIDDEN", "Only the scenario owner can edit QA notes.");
   }
 
-  const notes: QaNotes = { ...input, updatedAt: new Date().toISOString(), updatedBy: user.email ?? user.uid };
+  const notes: QaNotes = { ...input, updatedAt: new Date().toISOString(), updatedBy: user.displayName };
   const expected = input.comparedField ? scenario.result.summary.find((s) => s.key === input.comparedField) : undefined;
   if (expected?.kind === "money") {
     notes.expectedValue = expected.value;

@@ -29,7 +29,7 @@ function Stat({ label, value, hint }: { label: string; value: React.ReactNode; h
 }
 
 export default function DashboardPage() {
-  const { user, role } = useAuth();
+  const { profile, role } = useAuth();
   const { data: products } = useProducts();
   const { data: scenarios } = useApi<{ scenarios: ScenarioListItem[] }>("/api/scenarios");
 
@@ -40,10 +40,10 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Dashboard"
+        title={profile?.firstName ? `Welcome, ${profile.firstName}` : "Dashboard"}
         description={
           <>
-            Signed in as {user?.email} · {role ? ROLE_LABELS[role] : "…"}
+            Signed in as {profile?.displayName ?? "…"} · {role ? ROLE_LABELS[role] : "…"}
           </>
         }
       />

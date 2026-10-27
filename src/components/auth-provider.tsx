@@ -3,33 +3,42 @@
 import { onIdTokenChanged, signOut as fbSignOut, type User } from "firebase/auth";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { clientAuth } from "@/lib/firebase/client";
+import type { UserProfile } from "@/lib/profile";
 import type { Role } from "@/lib/roles";
 
 interface AuthState {
   user: User | null;
+  profile: UserProfile | null;
   role: Role | undefined;
   loading: boolean;
   signOut: () => Promise<void>;
+  /** Re-reads /api/me (e.g. after the name was changed). */
+  refreshProfile: () => Promise<void>;
+  setProfile: (p: UserProfile) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
+async function fetchProfile(u: User): Promise<UserProfile | null> {
+  const res = await fetch("/api/me", { headers: { Authorization: `Bearer ${await u.getIdToken()}` } });
+  return res.ok ? ((await res.json()).user as UserProfile) : null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role | undefined>();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     return onIdTokenChanged(clientAuth(), async (u) => {
       setUser(u);
       if (!u) {
-        setRole(undefined);
+        setProfile(null);
         setLoading(false);
         return;
       }
       try {
-        const res = await fetch("/api/me", { headers: { Authorization: `Bearer ${await u.getIdToken()}` } });
-        if (res.ok) setRole((await res.json()).user.role);
+        setProfile(await fetchProfile(u));
       } finally {
         setLoading(false);
       }
@@ -37,7 +46,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(() => fbSignOut(clientAuth()), []);
-  const value = useMemo(() => ({ user, role, loading, signOut }), [user, role, loading, signOut]);
+  const refreshProfile = useCallback(async () => {
+    const u = clientAuth().currentUser;
+    if (u) setProfile(await fetchProfile(u));
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, profile, role: profile?.role, loading, signOut, refreshProfile, setProfile }),
+    [user, profile, loading, signOut, refreshProfile],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

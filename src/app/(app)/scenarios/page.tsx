@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { scenariosToCsv } from "@/domain/export";
 import { downloadText } from "@/lib/api-client";
 import { displayValue, formatDateTime } from "@/lib/format";
+import { personLabel } from "@/lib/profile";
 import type { ScenarioListItem } from "@/lib/scenario-types";
 import { useApi } from "@/lib/use-api";
 
@@ -117,7 +118,11 @@ export default function ScenariosPage() {
                         <Link href={`/scenarios/${s.id}`} className="hover:underline">
                           {s.name}
                         </Link>
-                        {s.userEmail && <div className="text-xs text-muted-foreground">{s.userEmail}</div>}
+                        {(s.userName || s.userEmail) && (
+                          <div className="text-xs text-muted-foreground" title={s.userEmail ?? undefined}>
+                            {personLabel(s)}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-xs">{s.productCode}</TableCell>
                       <TableCell>

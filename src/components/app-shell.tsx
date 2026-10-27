@@ -12,16 +12,19 @@ import {
   Menu,
   PiggyBank,
   Settings2,
+  UserPen,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { initials } from "@/lib/profile";
 import { canReviewConfig, ROLE_LABELS, type Role } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./auth-provider";
 import { BrandMark } from "./brand-mark";
+import { ProfileNameDialog } from "./profile-name-dialog";
 import { ThemeToggle } from "./theme-toggle";
 
 interface NavItem {
@@ -110,13 +113,24 @@ function Brand() {
   );
 }
 
-function UserBlock() {
-  const { user, role, signOut } = useAuth();
+function UserBlock({ onEditName }: { onEditName: () => void }) {
+  const { profile, role, signOut } = useAuth();
+  const name = profile?.displayName ?? "…";
   return (
     <div className="space-y-2 border-t border-sidebar-border pt-4">
-      <div className="px-1 text-xs">
-        <p className="truncate font-medium">{user?.email}</p>
-        <p className="text-sidebar-foreground/60">{role ? ROLE_LABELS[role] : "…"}</p>
+      <div className="flex items-center gap-2.5 px-1">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-semibold text-primary" aria-hidden>
+          {profile ? initials(profile.displayName) : "…"}
+        </span>
+        <div className="min-w-0 flex-1 text-xs">
+          <p className="truncate text-sm font-medium" title={profile?.email ?? undefined}>
+            {name}
+          </p>
+          <p className="text-sidebar-foreground/60">{role ? ROLE_LABELS[role] : "…"}</p>
+        </div>
+        <Button variant="ghost" size="icon" className="size-7" aria-label="Edit your name" title="Edit your name" onClick={onEditName}>
+          <UserPen aria-hidden />
+        </Button>
       </div>
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" onClick={() => signOut()}>
@@ -130,10 +144,13 @@ function UserBlock() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  // Users without a stored name (e.g. created before names existed) must add one.
+  const nameMissing = Boolean(profile && !profile.firstName);
 
   useEffect(() => {
     if (!loading && !user) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
@@ -154,7 +171,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto">
           <NavLinks />
         </div>
-        <UserBlock />
+        <UserBlock onEditName={() => setEditingName(true)} />
       </aside>
 
       <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-sidebar px-4 py-3 text-sidebar-foreground lg:hidden">
@@ -166,7 +183,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {open && (
         <div className="fixed inset-x-0 top-[57px] bottom-0 z-20 flex flex-col gap-6 overflow-y-auto bg-sidebar p-4 text-sidebar-foreground lg:hidden">
           <NavLinks onNavigate={() => setOpen(false)} />
-          <UserBlock />
+          <UserBlock onEditName={() => { setOpen(false); setEditingName(true); }} />
         </div>
       )}
 
@@ -176,6 +193,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">{children}</div>
       </main>
+      {(nameMissing || editingName) && (
+        <ProfileNameDialog
+          key={profile?.uid}
+          open
+          required={nameMissing}
+          onOpenChange={(o) => !o && setEditingName(false)}
+        />
+      )}
     </div>
   );
 }
