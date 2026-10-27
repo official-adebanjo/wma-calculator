@@ -36,8 +36,10 @@ npm run dev
   Service accounts, click *Generate new private key*, then set `FIREBASE_CLIENT_EMAIL` and
   `FIREBASE_PRIVATE_KEY` in `.env.local`. On Google Cloud / App Hosting, Application Default Credentials
   are used instead.
-- **Firestore:** deploy the rules (all direct client access denied) and the index:
-  `npx firebase-tools deploy --only firestore`
+- **Firestore:** no index deployment is needed; the queries are designed to work without composite indexes.
+  `firestore.rules` denies all direct client access, because this app only uses the Admin SDK. **Do not deploy it
+  to a Firebase project shared with other apps**, since it would block their client-side Firestore access. Deploy it
+  only to a dedicated project.
 - **Roles:** set `ADMIN_EMAILS` / `REVIEWER_EMAILS` (comma-separated). Everyone else is a QA Tester.
 
 ### Fully offline (emulators)

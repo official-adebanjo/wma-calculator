@@ -63,11 +63,21 @@ export async function createScenario(user: SessionUser, name: string, result: Ca
   return scenario;
 }
 
+const LIST_FIELDS = ["id", "name", "userId", "userEmail", "productCode", "productName", "status", "configVersionId", "calculationId", "createdAt", "result", "qaNotes"];
+
 export async function listScenarios(user: SessionUser, limit = 200): Promise<ScenarioListItem[]> {
-  let q = adminDb().collection(SCENARIOS).orderBy("createdAt", "desc").limit(limit);
-  if (!canSeeAll(user)) q = adminDb().collection(SCENARIOS).where("userId", "==", user.uid).orderBy("createdAt", "desc").limit(limit);
-  const snap = await q.select("id", "name", "userId", "userEmail", "productCode", "productName", "status", "configVersionId", "calculationId", "createdAt", "result", "qaNotes").get();
-  return snap.docs.map((d) => d.data() as ScenarioListItem);
+  const col = adminDb().collection(SCENARIOS);
+  if (canSeeAll(user)) {
+    const snap = await col.orderBy("createdAt", "desc").limit(limit).select(...LIST_FIELDS).get();
+    return snap.docs.map((d) => d.data() as ScenarioListItem);
+  }
+  // Equality filter only, sorted in memory: avoids requiring a composite
+  // (userId, createdAt) index in a Firebase project that may be shared.
+  const snap = await col.where("userId", "==", user.uid).select(...LIST_FIELDS).get();
+  return snap.docs
+    .map((d) => d.data() as ScenarioListItem)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit);
 }
 
 export async function getScenario(user: SessionUser, id: string): Promise<Scenario> {

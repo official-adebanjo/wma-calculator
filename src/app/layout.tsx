@@ -16,7 +16,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning className={cn("font-sans", sans.variable, mono.variable)}>
-      <body className="antialiased">
+      {/* Browser extensions (e.g. Grammarly) inject attributes on <body>. */}
+      <body className="antialiased" suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>
