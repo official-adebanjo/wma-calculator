@@ -1,0 +1,23 @@
+# dependencies
+/node_modules
+# next.js
+/.next/
+/out/
+/build
+# env / secrets
+.env*
+!.env.example
+*.pem
+service-account*.json
+# firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+# misc
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+/coverage
+/test-results
+/playwright-report
