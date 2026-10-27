@@ -10,7 +10,7 @@ import { type Firestore, getFirestore } from "firebase-admin/firestore";
  *  2. Service account from FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY.
  *  3. Application Default Credentials (e.g. on Google Cloud / Firebase App Hosting).
  */
-function adminApp(): App {
+export function adminApp(): App {
   const existing = getApps()[0];
   if (existing) return existing;
 
