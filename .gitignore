@@ -25,3 +25,5 @@ npm-install.log
 
 # local secrets — never commit
 recovery-codes.txt
+# Firebase service-account keys
+*firebase-adminsdk*.json
