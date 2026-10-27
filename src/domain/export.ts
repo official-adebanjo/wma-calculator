@@ -51,7 +51,13 @@ export function resultToCsv(r: CalculationResult, scenarioName?: string): string
 }
 
 export function scenariosToCsv(
-  items: { id: string; name: string; createdAt: string; result: CalculationResult; qaNotes?: Record<string, unknown> }[],
+  items: {
+    id: string;
+    name: string;
+    createdAt: string;
+    result: CalculationResult;
+    qaNotes?: { outcome?: string; observedValue?: string; defectId?: string } | null;
+  }[],
 ): string {
   const keys = [...new Set(items.flatMap((i) => i.result.summary.map((s) => s.key)))];
   const header = ["Scenario ID", "Name", "Created", "Product", "Status", "Config version", "Rate source", ...keys, "QA outcome", "Observed value", "Defect ID"];

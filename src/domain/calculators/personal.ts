@@ -1,5 +1,5 @@
 import { addMonths } from "../dates";
-import { componentRounder, dec, type Dec, percentOf } from "../money";
+import { componentRounder, dec, type Dec } from "../money";
 import type { ScheduleRow, SecondaryAnalysis } from "../types";
 import {
   type CalculatorStrategy,
