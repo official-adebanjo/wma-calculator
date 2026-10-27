@@ -1,0 +1,800 @@
+ROSABON FINANCIAL SERVICES (RFS) LOAN AND INVESTMENT CALCULATOR WEB APP
+SOLUTION ARCHITECTURE AND DEVELOPMENT SPECIFICATION
+
+Document status: Draft for engineering planning Version: 1.0 Date: 27
+October 2026 Purpose: Build a QA-focused web application that calculates
+estimates and detailed breakdowns for RFS loan and investment products,
+using approved product rules and PRD-backed configuration.
+
+====================================================================== 1.
+EXECUTIVE SUMMARY
+======================================================================
+
+Build a web application that allows a tester or authorized user to
+select an RFS loan or investment product, enter the relevant
+principal/funding amount and tenor, choose product-specific options, and
+receive a transparent calculation breakdown.
+
+The app is primarily a QA calculation/reference tool. It should
+support: - Estimates and detailed breakdowns for loan and investment
+products. - Product-specific validation of amount, tenor, rate, and
+required options. - A calculation explanation showing the formula and
+values used. - Scenario comparison, calculation history, and exportable
+results. - Versioned product rules and rate tables so expected results
+can be reproduced. - A clear distinction between confirmed PRD rules,
+illustrative examples, configurable values, and unresolved rules.
+
+The calculator must not silently invent rates or formulas. If an
+approved rate or calculation rule is unavailable, it must either show a
+validation-only result or mark the numerical result as BLOCKED /
+CONFIGURATION REQUIRED. This is especially important for REAP and RWIN,
+whose approved calculation tables/rules are not complete in the reviewed
+materials.
+
+This is a calculation and QA support tool. It must not disburse loans,
+accept investment funds, create a live investment, debit wallets, or act
+as the source of truth for customer balances. The Core Banking
+Application (CBA/CBS) and approved RFS systems remain authoritative for
+live transactions and ledger values.
+
+======================================================================
+2. OBJECTIVES
+======================================================================
+
+2.1 Primary objectives - Calculate estimates consistently for each
+supported loan and investment product. - Display principal, rate, tenor,
+interest/return, tax or deductions, total payable/payout, and
+installment schedule where applicable. - Let QA compare calculator
+output against the app, API, Admin Portal, ledger, and approved test
+cases. - Make each result reproducible using the exact product
+configuration and rule version used. - Prevent unsupported product
+combinations from returning misleading figures. - Support future
+products by adding product configuration and a calculation strategy
+rather than rewriting the entire application.
+
+2.2 Non-goals - No live loan application, underwriting, approval,
+signing, disbursement, or repayment collection. - No investment booking,
+funding, withdrawal, rollover, or ledger mutation. - No direct
+integration to BVN/NIN, credit bureaus, bank accounts, payment
+providers, or wallets in the MVP. - No claim that an estimate is an
+approved customer offer unless explicitly sourced from an approved
+configuration. - No replacement of the RFS CBA/CBS, production loan
+engine, or production investment calculation service.
+
+======================================================================
+3. SOURCE DOCUMENTS AND RULE STATUS
+======================================================================
+
+The design is based on the reviewed RFS materials: - LOAN PRODUCT
+SPECIFICATIONS.docx - RFS Unified App Asset Creation PRD.docx - Rosabon
+Unified App — Investment Customer Journeys.docx - Rosabon QA Calculation
+Matrix.xlsx
+
+Implementation must preserve the following source-status distinctions.
+
+3.1 Confirmed or specified calculation patterns
+
+NANO LOAN - Principal range: NGN 5,000 to NGN 50,000, configurable. -
+Tenor: 1 to 30 days. - Example daily rate: 0.30% per day. - Interest =
+Principal x daily rate x number of days. - Total repayable = Principal +
+interest. - Example: NGN 20,000 for 7 days at 0.30% per day gives NGN
+420 interest and NGN 20,420 total repayable.
+
+PAYDAY LOAN - Maximum amount: up to NGN 500,000, subject to
+configuration and salary evaluation. - Tenor: 7 to 30 days. - Example
+daily rate: 0.30% per day. - Interest = Principal x daily rate x number
+of days. - Total repayable = Principal + interest. - Early settlement
+interest is recalculated/capped using actual days used. - Example: NGN
+200,000 for 15 days at 0.30% per day gives NGN 9,000 interest and NGN
+209,000 total repayable.
+
+PERSONAL LOAN — PRIVATE SECTOR - Maximum amount: up to NGN 30,000,000,
+configurable. - Tenor: 3 to 24 months, configurable. - Interest model is
+configurable: monthly flat or reducing balance. - Private-sector loan
+specification states early repayment is allowed without penalty and
+future unearned interest is waived. - Illustrative flat example in
+source: NGN 6,000,000 over 6 months at 2% monthly; NGN 720,000 total
+interest; NGN 6,720,000 total repayable; NGN 1,120,000 equal monthly due
+when principal is repaid equally. - Illustrative reducing-balance
+example in source: NGN 6,000,000 over 6 months at 2% monthly; total
+interest NGN 420,000; total repayable NGN 6,420,000; installment amounts
+reduce from NGN 1,120,000 to NGN 1,020,000.
+
+RTN — ROSABON TREASURY NOTE - Principal bands: Band A: NGN 50,000 to NGN
+999,999.99. Band B: NGN 1,000,000 to NGN 9,999,999.99. Band C: NGN
+10,000,000 and above. - Allowed tenors: 60, 90, 120, 180, and 365
+days. - Rates vary by band, tenor, and payout option (upfront or at
+maturity). Rates are annual percentages and must be loaded from the
+current approved RTN Rate Guide. Do not hardcode the table as
+permanently authoritative. - At-maturity formula: gross interest =
+principal x annual rate x actual days / 365. - Withholding tax (WHT) =
+10% of gross interest. - Net interest = gross interest - WHT. - Maturity
+payout = principal + net interest. - Example in source: NGN 1,000,000,
+90 days, Band B maturity rate 18.75%: gross interest NGN 46,232.88; WHT
+NGN 4,623.29; net interest NGN 41,609.59; payout NGN 1,041,609.59. -
+Upfront option uses a discounted booked principal calculation. The
+reviewed journey example uses divisor = 1 + ((1 - WHT rate) x annual
+rate x tenor / 365), booked principal = funded amount / divisor, and
+upfront interest = funded amount - booked principal. The approved rule,
+rounding, and presentation must be confirmed with
+Product/Treasury/Finance before being treated as authoritative. - Early
+withdrawal, top-ups, partial withdrawals, penalty-band boundaries,
+upfront-interest claw-back, maturity default, and weekend/holiday
+handling contain proposed or open rules. These must be configurable and
+marked as unresolved until approved.
+
+REAP AND RWIN - The reviewed materials do not provide complete approved
+rate tables and calculation rules for reliable numerical estimates. -
+Journey documents identify inconsistent/incorrect projections and
+missing-rate behavior. - RWIN minimum is described as NGN 50,000 in the
+journey material; another earlier app note suggests a conflicting
+minimum. Use the approved current product configuration as source of
+truth and resolve the conflict before numerical acceptance testing. -
+REAP has previously shown an amount/tenor combination without an
+available rate while still displaying a projection. The calculator must
+never do this. - Until rates and formulas are approved, REAP/RWIN may
+support input validation and configuration-status display, but numeric
+return calculation must remain disabled or clearly marked BLOCKED.
+
+3.2 Rules that must not be guessed Before enabling a production-quality
+calculation for any product, obtain approved decisions for: - Rate, rate
+unit, rate effective date, and source/version. - Whether rate is daily,
+monthly, or annual. - Simple vs compound interest. - Day-count
+convention (365, 360, actual/actual, or another approved basis). -
+Rounding policy: component-level, per-day, per-installment, or
+final-only. - Minimum/maximum principal and tenor. - Rate band
+boundaries and inclusivity. - Due-date, maturity-date, weekends, and
+public holidays. - Early settlement, partial repayment, penalty,
+claw-back, rebate, and fees. - Product-specific eligibility and whether
+eligibility affects calculator limits. - How configuration changes
+affect existing quotes and saved scenarios.
+
+======================================================================
+4. USERS AND ACCESS
+======================================================================
+
+MVP roles: 1. QA Tester - Select products and enter test inputs. - Run
+calculations and compare scenarios. - Save and export calculation
+results. - View calculation formula, configuration version, and
+warnings.
+
+2.  Product/Finance Reviewer
+    -   Review calculation outputs and unresolved rule questions.
+    -   In MVP, product configuration may be maintained through a
+        controlled configuration file or seeded database.
+    -   If an admin screen is later added, rate/rule changes must be
+        authenticated, audited, versioned, and approved.
+3.  Administrator
+    -   Manage users, product configuration, rate tables, rule versions,
+        and audit logs.
+    -   Cannot silently alter a historical calculation; changes create a
+        new configuration version.
+
+The app should be private to the organization or protected behind
+authentication if deployed beyond a local developer environment. Do not
+expose internal product rates or test data publicly without
+authorization.
+
+======================================================================
+5. RECOMMENDED TECHNOLOGY STACK
+======================================================================
+
+Frontend: - Next.js App Router - TypeScript - Tailwind CSS - A reusable
+component system such as shadcn/ui, if desired - React Hook Form plus
+Zod for input validation - Recharts only if charts materially help
+comparison; tables are required for schedules
+
+Backend: - Node.js with TypeScript - Next.js Route Handlers for a small
+single-deployment MVP, or a separate Node.js API service if calculation
+logic will be reused by other applications - Zod for API
+request/response validation - A dedicated calculation domain/service
+layer that has no dependency on UI components
+
+Persistence: - PostgreSQL for users, saved scenarios, configuration
+versions, and audit records - Prisma ORM or an equivalent typed
+data-access layer - For a local-only prototype, configuration can begin
+in version-controlled JSON files, but historical runs should record a
+snapshot/version identifier.
+
+Testing: - Vitest or Jest for unit tests - Playwright for end-to-end
+browser tests - Approved examples in the QA Calculation Matrix as
+golden/reference test cases - Optional CI pipeline to run unit,
+integration, and UI tests on every change
+
+Deployment: - Internal test/staging environment first. - Use environment
+variables for secrets and deployment configuration. - No secrets, real
+customer data, or production credentials in source control.
+
+Architecture should remain modular so that the UI, calculation engine,
+configuration store, and persistence layer can be tested independently.
+
+======================================================================
+6. HIGH-LEVEL ARCHITECTURE
+======================================================================
+
+Browser UI | | HTTPS / validated JSON request v API Layer / Route
+Handlers | +–> Input Validation and Product Lookup | +–> Versioned
+Product Configuration Repository | +–> Calculation Orchestrator | +–>
+Nano Loan Calculator +–> Payday Loan Calculator +–> Personal Loan
+Calculator +–> Public-Sector Loan Calculator (only after rules approved)
++–> RTN Calculator +–> REAP Calculator (disabled until rules approved)
++–> RWIN Calculator (disabled until rules approved) | +–> Result
+Normalizer / Rounding Policy | +–> Explanation and Validation Messages |
++–> Scenario History / Audit Repository | v Response: summary + detailed
+breakdown + formula + config version + warnings
+
+Important boundary: - Calculation services are pure domain functions:
+inputs + explicit configuration -> deterministic result. - The
+calculator does not write to the RFS live ledger or initiate a financial
+transaction. - If the real app/API is later available in a test
+environment, add an optional comparison adapter that reads authorized
+test-environment outputs. Never replace the calculator’s expected-result
+logic with the value being tested; otherwise the tool cannot
+independently validate that value.
+
+======================================================================
+7. APPLICATION MODULES
+======================================================================
+
+7.1 Product Catalogue - Separate Loan Calculators and Investment
+Calculators. - Show product name, supported calculation status,
+minimum/maximum amount, tenor options, interest model, and any
+configuration warning. - Do not show a product as numerically calculable
+if required rates or formulas are missing. - Products can be marked:
+ACTIVE: approved rules and rates exist. VALIDATION_ONLY: input limits
+can be checked, but no approved numerical formula exists. BLOCKED:
+required rules/configuration are missing or expired. DEPRECATED:
+retained for historical scenarios but not available for new runs.
+
+7.2 Dynamic Input Form - Render fields from product configuration. -
+Common fields: principal/funding amount, tenor, rate option where
+relevant, start date/value date if required, calculation date, and
+product-specific options. - Validate minimum, maximum, allowed tenor,
+required options, numeric precision, and rate availability. - Display
+field-level errors and a clear explanation. - Recalculate only when all
+required fields are valid. - Clearly label any manually overridden rate
+as a QA override and distinguish it from approved configuration.
+
+7.3 Calculation Results Every successful calculation should include: -
+Product and product code. - Principal/funding amount. - Selected tenor
+and unit. - Rate and rate unit (e.g. 0.30% per day or 18.75% p.a.). -
+Rate source and configuration version/effective date. - Gross
+interest/return. - Tax, withholding tax, fees, penalties, or other
+deductions, where applicable. - Net interest/return. - Total repayment
+or maturity payout. - Installment schedule for installment-based
+loans. - Early-settlement or early-withdrawal estimate when the rules
+are approved. - Formula and calculation steps. - Warnings, assumptions,
+and any rules not yet approved. - A result status: CALCULATED,
+VALIDATION_ONLY, BLOCKED, or ERROR.
+
+7.4 Scenario Comparison - Compare two or more valid scenarios for the
+same product or supported products. - Show input differences and output
+differences side-by-side. - For investments, compare tenor and payout
+option where supported. - For loans, compare interest model, tenor,
+rate, total interest, installment, and total repayment. - Do not compare
+outputs produced under incompatible or unapproved rule versions without
+a warning.
+
+7.5 Scenario History - Save named scenarios. - Store the input values,
+output breakdown, formula version, rate/configuration version,
+calculation timestamp, user, and warnings. - Historical results must be
+immutable snapshots. Recalculating after a rate update creates a new
+result rather than silently changing an old result. - Allow CSV export
+in MVP; PDF export can be added later.
+
+7.6 Configuration Management For MVP, configuration may be seeded from
+checked-in JSON and reviewed by Engineering/Product. A future admin
+interface should support: - Product activation status. - Principal
+bounds and allowed tenors. - Rate tables and rate effective dates. -
+Interest model and calculation method. - Tax/withholding settings. -
+Rounding rules. - Early repayment/withdrawal rules. - Versioning, change
+reason, author, approver, and audit trail. - Draft, pending approval,
+active, and retired states. - Validation that prevents activation when
+required fields are missing.
+
+======================================================================
+8. PRODUCT CALCULATION SPECIFICATIONS
+======================================================================
+
+8.1 Shared calculation rules - Use decimal arithmetic or integer minor
+units (kobo) for monetary values. Do not use binary floating-point
+arithmetic for money calculations. - Preserve full precision during
+intermediate steps according to the approved rounding policy. - Format
+NGN values consistently with two decimal places for display. - Return
+both raw numeric values and formatted display values if needed. - Never
+silently substitute a default rate if a rate is missing. - Always return
+the exact formula/version and input values used. - The same domain
+calculation service should power the UI, API response, saved scenario,
+and exported result.
+
+8.2 Nano Loan Inputs: - Principal amount. - Tenor in days. - Daily rate
+from active product configuration.
+
+Validations: - Principal within configured minimum and maximum; source
+example: NGN 5,000–NGN 50,000. - Tenor between 1 and 30 days. - Rate
+exists and is active.
+
+Calculation: Interest = Principal x Daily Rate x Tenor Days Total
+Repayable = Principal + Interest
+
+Output: - Principal. - Daily rate. - Number of days. - Interest. - Total
+repayable. - If the PRD does not define a multi-installment schedule,
+show one amount due at maturity rather than inventing installments.
+
+8.3 Payday Loan Inputs: - Principal. - Tenor in days. - Daily rate from
+active configuration. - Actual settlement day for early settlement
+preview, if enabled.
+
+Validations: - Tenor 7–30 days. - Principal does not exceed the
+configured product cap; maximum in source is up to NGN 500,000, subject
+to salary evaluation. - Rate exists.
+
+Calculation at scheduled maturity: Interest = Principal x Daily Rate x
+Selected Tenor Days Total Repayable = Principal + Interest
+
+Early settlement preview: - Calculate interest using actual days used,
+capped at the scheduled tenor. - Formula and exact day-count behavior
+must match the approved implementation. - Do not add an early settlement
+fee unless Product/Finance approves it.
+
+8.4 Personal Loan — Private Sector Inputs: - Principal. - Tenor in
+months. - Monthly rate. - Interest model: FLAT or REDUCING_BALANCE. -
+Optional payoff month/date for early settlement preview, only when
+approved rules are configured.
+
+Validations: - Principal above zero and not greater than configured
+maximum; source maximum up to NGN 30,000,000. - Tenor 3–24 months. -
+Interest model is explicitly selected/configured. - Rate unit must be
+MONTHLY if applying the source examples. Never interpret a monthly rate
+as an annual rate or vice versa.
+
+Flat model, consistent with source worked example: - Equal principal
+component = Principal / Number of Months. - Interest per month =
+Original Principal x Monthly Rate. - Monthly installment = Equal
+principal component + monthly interest. - Total interest = Monthly
+interest x Number of Months. - Total repayable = Principal + Total
+interest. - If the approved product implementation defines another flat
+repayment convention, configure it explicitly rather than silently
+changing this method.
+
+Reducing-balance model, consistent with source worked example: - Equal
+principal component = Principal / Number of Months. - At each period,
+interest = Opening Principal Balance x Monthly Rate. - Installment =
+Principal Component + Period Interest. - Closing Balance = Opening
+Balance - Principal Component. - Total interest = sum of period
+interest. - Total repayable = Principal + Total interest. - The approved
+PRD example uses equal principal repayments and declining interest; do
+not substitute a standard amortizing-payment formula unless the business
+specification explicitly requires it.
+
+Early repayment: - Private-sector specification states early repayment
+is allowed without penalty and future unearned interest is waived. - The
+precise payoff quote calculation, accrued-interest convention, and
+treatment of current-period interest must be approved and implemented
+before the feature is enabled. - Broader PRD language describes
+product-specific penalty/rebate logic in some flows. Product-specific
+policy takes precedence only after Product/Finance confirms the
+authoritative rule.
+
+8.5 Public-Sector Loan and other loan products - The broader Asset
+Creation PRD describes additional loan/lease products, but the reviewed
+loan specification does not provide complete calculation rules for every
+product. - Add a product module only after Product/Finance supplies
+approved limits, tenor, rate unit, interest model, repayment convention,
+and early-settlement rules. - Do not reuse private-sector rates or
+formulas for public-sector, group, SME, collateralized, study, BNPL, or
+lease products by assumption. - For unconfigured products, show
+VALIDATION_ONLY or BLOCKED status.
+
+8.6 RTN — At-Maturity Option Inputs: - Funding principal. - Tenor
+selected from 60, 90, 120, 180, 365 days. - Active RTN Rate Guide
+version. - Value/start date if maturity date is to be displayed.
+
+Band selection: - Band A: NGN 50,000–NGN 999,999.99. - Band B: NGN
+1,000,000–NGN 9,999,999.99. - Band C: NGN 10,000,000 and above. -
+Confirm boundary treatment and current active rate guide with
+Product/Treasury.
+
+Calculation: Gross Interest = Principal x Annual Rate x Actual Days /
+365 WHT = Gross Interest x 10% Net Interest = Gross Interest - WHT
+Maturity Payout = Principal + Net Interest
+
+Display: - Principal. - Band. - Rate and rate guide version. - Tenor and
+estimated maturity date. - Gross interest. - WHT. - Net interest. -
+Maturity payout. - Formula and calculation assumptions.
+
+8.7 RTN — Upfront Option - Implement only after the current approved
+formula, rounding, tax treatment, and booking display have been signed
+off. - The reviewed journey uses a discounted booked-principal formula:
+Divisor = 1 + ((1 - WHT Rate) x Annual Rate x Tenor Days / 365) Booked
+Principal = Funded Amount / Divisor Upfront Interest = Funded Amount -
+Booked Principal - This formula is documented in the reviewed journey,
+but the configuration and rounding behavior need approval before being
+treated as final. - Display funded amount, rate, tenor, booked
+principal, upfront interest, and any applicable tax treatment
+separately. - Do not imply that the upfront interest amount is the same
+as the maturity option’s interest.
+
+8.8 RTN — Early Withdrawal, Top-Up, Partial Withdrawal - Design the
+calculation engine to support these as separate strategies, but keep
+each disabled until the open rules are approved. - Open questions
+include penalty-band gaps/boundaries, upfront interest claw-back, top-up
+rate treatment, partial withdrawal re-rating, maturity default, and
+weekend/holiday handling. - The UI may expose a clearly marked preview
+only if stakeholders approve a provisional test mode. Provisional
+outputs must never be labelled confirmed. - Include the elapsed days,
+elapsed-tenor percentage, penalty rate, gross interest, penalty, taxable
+amount, WHT, net interest, and payout where applicable.
+
+8.9 REAP - Build the UI and calculation interface, but set product
+status to VALIDATION_ONLY or BLOCKED until the approved rate table,
+calculation formula, plan type, contribution rules, tenor/target-date
+behavior, and maturity rules are provided. - Do not hardcode 30% p.a. or
+any other assumed rate. - If the selected amount/tenor has no approved
+rate, display a message such as: “No approved rate is available for this
+combination. Calculation is unavailable.” - Once approved rules are
+supplied, add the strategy behind the same shared calculation interface
+and create golden test cases before activation.
+
+8.10 RWIN - Build the UI and calculation interface, but set status to
+VALIDATION_ONLY or BLOCKED until the approved rate table, cycle length,
+return formula, maturity rules, and any prize/reward rules are
+confirmed. - Use the currently approved configured minimum amount;
+resolve conflicting source notes before activation. - Do not reuse RTN
+rates or formulas. - No fallback/default projection is allowed when a
+rate is missing. - Once approved, test projections for sanity and parity
+between quote, setup summary, booking, placement, and certificate.
+
+======================================================================
+9. DOMAIN MODEL AND DATA STRUCTURES
+======================================================================
+
+Suggested entities:
+
+Product - id - code (NANO, PAYDAY, PERSONAL_PRIVATE, RTN, REAP, RWIN,
+etc.) - name - category (LOAN or INVESTMENT) - status (ACTIVE,
+VALIDATION_ONLY, BLOCKED, DEPRECATED) - description -
+currentConfigVersionId
+
+ProductConfigVersion - id - productId - version - status (DRAFT,
+PENDING_APPROVAL, ACTIVE, RETIRED) - effectiveFrom - effectiveTo
+(nullable) - minimumPrincipal - maximumPrincipal (nullable) -
+tenorOptions / tenorMinimum / tenorMaximum - tenorUnit (DAY, MONTH) -
+rateModel (DAILY, MONTHLY, ANNUAL, TIERED) - interestModel
+(DAILY_PRORATED, FLAT, REDUCING_BALANCE, RTN_MATURITY, RTN_UPFRONT,
+CUSTOM) - rateTable (structured JSON or normalized related table) -
+taxConfig - roundingPolicy - ruleStatus / unresolvedRuleNotes -
+sourceDocument / sourceSection - createdBy, approvedBy, createdAt
+
+CalculationRun - id - userId - productId - configVersionId - status
+(CALCULATED, VALIDATION_ONLY, BLOCKED, ERROR) - inputsJson -
+outputsJson - formulaVersion - assumptionsJson - warningsJson -
+createdAt
+
+CalculationLineItem - id - calculationRunId - sequence - label -
+amount - type (PRINCIPAL, INTEREST, TAX, FEE, PENALTY, INSTALLMENT,
+PAYOUT, BALANCE) - explanation
+
+AuditEvent - id - userId - action - entityType - entityId -
+beforeSnapshot - afterSnapshot - reason - createdAt
+
+Optional later: - User and Role - ApprovalRequest - GoldenTestCase -
+ExternalComparisonRun
+
+Configuration must not store secrets. Rates should be stored as decimal
+values with explicit units and effective dates, never as ambiguous bare
+percentages.
+
+======================================================================
+10. API DESIGN
+======================================================================
+
+Example endpoints for a Next.js Route Handler or separate API:
+
+GET /api/products - Returns product catalogue and calculation status.
+
+GET /api/products/{productCode} - Returns product metadata, valid input
+constraints, allowed tenors/options, and active configuration status. -
+Avoid exposing restricted configuration to unauthorized users.
+
+POST /api/calculations Request example: { “productCode”: “NANO”,
+“inputs”: { “principal”: “20000.00”, “tenor”: 7, “tenorUnit”: “DAY” } }
+
+Response shape: { “status”: “CALCULATED”, “productCode”: “NANO”,
+“configVersion”: “NANO-1.0”, “inputs”: {}, “summary”: { “principal”:
+“20000.00”, “grossInterest”: “420.00”, “tax”: “0.00”, “netInterest”:
+“420.00”, “totalRepayable”: “20420.00” }, “lineItems”: [], “formula”:
+“interest = principal x dailyRate x tenorDays”, “assumptions”: [],
+“warnings”: [] }
+
+The JSON above is illustrative. Final API schema should use validated
+decimal strings or a decimal-safe representation for monetary values.
+
+POST /api/scenarios - Saves a calculation snapshot and user-provided
+scenario name.
+
+GET /api/scenarios - Returns scenarios available to the authenticated
+user.
+
+GET /api/scenarios/{id} - Returns the immutable saved inputs, outputs,
+configuration version, formula, and warnings.
+
+POST /api/scenarios/compare - Accepts scenario IDs or calculation inputs
+and returns a normalized comparison.
+
+GET /api/config/versions/{productCode} - Admin/reviewer-only endpoint to
+inspect versions and status.
+
+POST /api/config/versions - Admin-only draft creation endpoint;
+activation requires approval workflow if an admin interface is
+implemented.
+
+Error response conventions: - 400: malformed input or invalid fields. -
+401/403: authentication/authorization failure. - 404: unknown
+product/scenario. - 409: no active configuration, stale configuration,
+or conflicting version state. - 422: valid request structure but
+unsupported product combination/rule. - 500: unexpected system error;
+never return a plausible-looking zero calculation.
+
+======================================================================
+11. FRONTEND PAGE STRUCTURE
+======================================================================
+
+Recommended routes: - /login (if authentication is required) -
+/dashboard - /calculators - /calculators/loans -
+/calculators/investments - /calculators/[productCode] - /scenarios -
+/scenarios/[id] - /compare - /admin/configuration (future, protected) -
+/admin/audit (future, protected)
+
+Product calculator screen: A. Header - Product name and category. -
+Rule/configuration status. - Source/version indicator.
+
+B. Input panel - Principal/funding amount. - Tenor. - Rate option/model
+if supported. - Product-specific fields. - Calculate button or
+controlled live calculation. - Reset button.
+
+C. Summary panel - Total interest/return. - Tax/deductions. - Net
+interest/return. - Total repayable/payout. - Monthly installment or due
+amount when applicable.
+
+D. Detailed breakdown - Formula steps. - Rate and band selection. -
+Installment schedule table for loans. - Early-settlement/withdrawal
+analysis if approved. - Date assumptions and warnings.
+
+E. QA panel - Calculation ID. - Configuration version. - Copy result
+JSON. - Save scenario. - Export CSV. - Compare with another scenario. -
+Optional fields for tester’s observed production value, difference,
+pass/fail, defect ID, and evidence notes.
+
+Accessibility and usability: - Keyboard-operable form controls. -
+Visible labels and validation messages. - Do not rely on color alone for
+status. - Keep calculations readable on desktop and mobile. - Show
+blocked/unknown status explicitly, not as a blank result or zero value.
+
+======================================================================
+12. VALIDATION AND ERROR HANDLING
+======================================================================
+
+Input validation: - Reject negative values, zero principal where not
+allowed, non-numeric values, unsupported decimal precision, and missing
+fields. - Validate tenor against product rules. - Validate selected rate
+option and tenor combination against active rate table. - Handle band
+boundaries precisely. - Detect stale/missing configuration. - If product
+is BLOCKED, do not calculate a numeric output. - If product is
+VALIDATION_ONLY, perform only allowed validation and state that
+numerical calculation is unavailable. - Never coerce an invalid value to
+zero. - Do not allow NaN, Infinity, or unbounded numeric values to reach
+the output.
+
+Calculation failures: - Return a stable error code and human-readable
+message. - Log technical details server-side without exposing secrets or
+internal stack traces. - Preserve the user’s inputs so they can correct
+the error. - Record the config version attempted where appropriate.
+
+Configuration failures: - If no active rate exists, return
+CONFIGURATION_UNAVAILABLE. - If a rate has expired, do not silently use
+it; show the expiry or refresh requirement. - If multiple active rates
+overlap, block calculation and log a configuration integrity error.
+
+======================================================================
+13. SECURITY, PRIVACY, AND AUDIT
+======================================================================
+
+-   Use authentication for shared/staging deployments.
+-   Enforce role-based access to configuration and audit pages.
+-   Validate all API requests on the server, even if the frontend
+    validates them.
+-   Use HTTPS in deployed environments.
+-   Store credentials and secrets in environment variables or a managed
+    secret store.
+-   Do not use real customer BVN, NIN, bank details, salary data, or
+    account identifiers in sample calculations.
+-   Use synthetic test data only.
+-   Apply secure session and CSRF protections appropriate to the chosen
+    authentication model.
+-   Rate-limit public or shared endpoints where appropriate.
+-   Audit configuration changes and approvals.
+-   Keep calculation snapshots immutable.
+-   Do not allow client-side code to set an approved configuration
+    version without server validation.
+-   Avoid sending detailed internal rates or test scenarios to analytics
+    providers.
+-   Establish retention and access rules for saved scenarios and logs.
+
+======================================================================
+14. TEST STRATEGY
+======================================================================
+
+14.1 Unit tests Create deterministic tests for each calculation
+function: - Minimum and maximum principal. - Every tenor boundary. -
+Rate band boundaries and immediately adjacent values. - Zero, negative,
+malformed, and excessive precision inputs. - Missing or expired rates. -
+Tax/withholding calculations. - Rounding. - Early settlement and
+withdrawal rules once approved. - Installment schedule totals and final
+balance. - Product status behavior.
+
+14.2 Golden/reference tests Store approved examples as machine-readable
+fixtures. Each fixture must include: - Product code. - Configuration
+version. - Inputs. - Expected outputs. - Expected line items. - Expected
+status. - Source document and section. - Approval status and date.
+
+Seed examples: - Nano: NGN 20,000, 7 days, 0.30% per day -> interest NGN
+420; total NGN 20,420. - Payday: NGN 200,000, 15 days, 0.30% per day ->
+interest NGN 9,000; total NGN 209,000. - Private flat: NGN 6,000,000, 6
+months, 2% monthly -> interest NGN 720,000; total NGN 6,720,000;
+installment NGN 1,120,000 per month under equal-principal convention. -
+Private reducing balance: NGN 6,000,000, 6 months, 2% monthly ->
+interest NGN 420,000; total NGN 6,420,000 under equal-principal
+convention. - RTN maturity: NGN 1,000,000, 90 days, 18.75% p.a. -> gross
+interest NGN 46,232.88; WHT NGN 4,623.29; net interest NGN 41,609.59;
+payout NGN 1,041,609.59, subject to approved rounding policy.
+
+14.3 Property/invariant tests - Total repayable = principal + total
+interest + approved fees/taxes as appropriate. - For reducing balance,
+closing balance should not become negative and final principal balance
+should be zero within approved rounding tolerance. - Net interest =
+gross interest - applicable tax/deductions. - RTN maturity payout =
+principal + net interest. - Same input + same config version + same
+formula version must produce the same output. - A missing rate must
+never return a fabricated projection. - Saved scenario output must match
+the original calculation snapshot. - Changing configuration must not
+mutate previous results.
+
+14.4 Integration tests - API rejects malformed and unsupported
+requests. - API response schema is stable. - Configuration lookup
+selects the correct effective rate. - Historical scenarios retain their
+configuration version. - Access controls prevent unauthorized config
+editing. - No financial transaction endpoint is called by the
+calculator.
+
+14.5 End-to-end tests - Select product -> enter valid values ->
+calculate -> inspect breakdown. - Invalid amount/tenor shows an
+actionable validation message. - Missing rate shows a blocked state. -
+Save, reopen, and compare a scenario. - Export a calculation and verify
+output values. - Update a draft config and verify it does not affect
+active calculations until approved/activated. - Verify mobile and
+desktop layout.
+
+Use the existing Rosabon QA Calculation Matrix as the initial execution
+checklist, and convert only approved/confirmed expected values into
+automated golden tests. Mark unresolved cases as blocked rather than
+inventing expected values.
+
+======================================================================
+15. OBSERVABILITY AND SUPPORT
+======================================================================
+
+-   Attach a unique calculation ID to every run.
+-   Log product code, config version, formula version, status, duration,
+    and error code.
+-   Do not log sensitive personal data.
+-   Add health checks for API and configuration availability.
+-   Monitor error rates and blocked calculation counts.
+-   Provide an internal diagnostics view for authorized testers.
+-   Capture enough metadata to reproduce a result without needing to
+    guess which rate table was active.
+
+======================================================================
+16. DELIVERY PLAN
+======================================================================
+
+PHASE 0 — RULES AND CONFIGURATION READINESS - Confirm the exact product
+list for MVP. - Confirm active rate tables, rates, formulas, rate units,
+rounding, and product limits. - Resolve conflicting minimums and
+product-specific policy conflicts. - Classify each product as ACTIVE,
+VALIDATION_ONLY, or BLOCKED. - Create approved golden test cases.
+Deliverable: signed-off calculation rules and configuration data.
+
+PHASE 1 — FOUNDATION - Create Next.js + TypeScript app. - Implement
+product catalogue, layout, form validation, API contract, and
+configuration loader. - Implement calculation result types and
+status/error model. - Add basic authentication if deployed to a shared
+environment. Deliverable: navigable app with product status and no
+unsupported calculations.
+
+PHASE 2 — CONFIRMED CALCULATORS - Implement Nano Loan. - Implement
+Payday Loan. - Implement Personal Loan flat and reducing-balance
+calculations. - Implement RTN at-maturity calculation using versioned
+rate configuration. - Add detailed line items and formula explanations.
+Deliverable: first useful QA calculator with automated unit tests.
+
+PHASE 3 — QA WORKFLOW - Add scenario saving, immutable snapshots,
+compare view, CSV export, and tester notes. - Add reference test fixture
+runner. - Add Playwright end-to-end tests. Deliverable: practical QA
+tool for repeatable calculation verification.
+
+PHASE 4 — REMAINING APPROVED RULES - Implement RTN upfront and
+early-exit/top-up/partial withdrawal once approved. - Implement REAP and
+RWIN only after complete approved rules are supplied. - Add
+public-sector and other loan products when their calculation rules are
+confirmed. Deliverable: expanded calculator coverage without assumed
+formulas.
+
+PHASE 5 — CONFIGURATION ADMIN AND RELEASE HARDENING - Add controlled
+configuration UI, approval workflow, audit log, and version lifecycle. -
+Add CI/CD, access control review, backup/retention rules, and deployment
+runbook. Deliverable: maintainable internal application ready for
+controlled use.
+
+======================================================================
+17. ACCEPTANCE CRITERIA
+======================================================================
+
+The MVP is acceptable when: 1. A user can select every product in the
+agreed MVP scope. 2. Products with approved calculation rules produce
+deterministic estimates and a detailed breakdown. 3. Products without
+approved rates/formulas clearly show VALIDATION_ONLY or BLOCKED and do
+not fabricate a numeric result. 4. Inputs are validated against the
+active product configuration. 5. Every result records the product,
+config version, formula version, inputs, outputs, assumptions, and
+warnings. 6. Monetary calculations use decimal-safe arithmetic. 7.
+Confirmed golden tests pass. 8. Scenario history is reproducible and
+immutable. 9. The UI and API show consistent values. 10. No live money
+movement, booking, disbursement, or ledger mutation is possible through
+the calculator. 11. A tester can export results and compare them with an
+observed application result. 12. Known unresolved rules are visible in
+documentation and are not silently implemented as assumptions.
+
+======================================================================
+18. OPEN QUESTIONS / DECISIONS REQUIRED
+======================================================================
+
+Product and Finance: - Which exact products are in the first release? -
+What are the current active rates and effective dates for each
+product? - Are the sample rates illustrative or approved production
+rates? - What are the exact rate units and day-count conventions? - What
+rounding method applies to each component and final total? - What is the
+authoritative RWIN minimum amount? - What are the complete REAP rate
+table, plan types, contribution rules, and return formula? - What are
+the complete RWIN cycle, return, maturity, and prize/reward rules? - Is
+the RTN upfront formula final? How is tax treated and rounded? - What
+are the final RTN early withdrawal, top-up, partial withdrawal, penalty
+boundary, claw-back, maturity, and holiday rules? - What is the approved
+public-sector loan model and rate? Do not assume private-sector rules
+apply. - What are the approved early-settlement calculations for each
+loan product? - Which fees, insurance, penalties, or other charges
+should be included? - How should maturity/due dates be calculated around
+weekends and public holidays?
+
+Engineering: - Is the tool local-only, internal-hosted, or
+internet-accessible? - Is authentication required for the MVP? - Should
+configuration begin as versioned JSON or a database-backed admin
+workflow? - Is there a QA/staging API that can be safely read for
+comparison? - What retention period is required for saved test
+scenarios? - Which export formats are required at launch?
+
+======================================================================
+19. DEFINITION OF DONE
+======================================================================
+
+A product calculator is complete only when: - Product/Finance has
+approved its calculation rules and configuration. - Engineering has
+implemented the calculation as a testable domain service. - Golden tests
+cover the approved examples and key boundaries. - The UI shows inputs,
+rate/version, calculation steps, totals, and warnings. - API and UI
+results match. - Missing or invalid configuration fails safely. - A
+tester can reproduce and export a result. - The calculation is
+documented and linked to its source/approval. - No unresolved assumption
+is presented as a confirmed product rule.
+
+END OF DOCUMENT

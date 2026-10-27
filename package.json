@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "emulators": "firebase emulators:start --only auth,firestore"
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-rfs-calculator"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",
