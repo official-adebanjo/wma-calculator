@@ -31,6 +31,7 @@ export function productView(product: ProductDefinition, now = new Date()): Produ
       ratePercent: c.ratePercent,
       rateProvenance: c.rateProvenance,
       withholdingTaxPercent: c.tax?.withholdingTaxPercent,
+      incomeCap: c.incomeCap,
       roundingPolicy: c.roundingPolicy,
       formulaVersion: c.formulaVersion,
       features: c.features,

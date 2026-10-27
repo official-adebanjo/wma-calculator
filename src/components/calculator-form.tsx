@@ -2,12 +2,13 @@
 
 import { ChevronDown, Loader2, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Controller, type FieldErrors, type Resolver, useForm } from "react-hook-form";
+import { Controller, type FieldErrors, type Resolver, useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { buildInputSchema, qaOptionsSchema, type QaOptions } from "@/domain/inputs";
+import { D, dec, formatNgn, percentOf } from "@/domain/money";
 import type { CalculationResult, InputFieldDef } from "@/domain/types";
 import { api, ApiRequestError } from "@/lib/api-client";
 import type { ProductView } from "@/lib/catalogue-types";
@@ -77,6 +78,19 @@ export function CalculatorForm({
 
   const form = useForm<FormValues>({ resolver, defaultValues: { ...emptyValues, ...initialValues }, mode: "onTouched" });
   const { register, control, handleSubmit, formState, setError, reset } = form;
+
+  // Live eligible maximum for income-capped products (server remains authoritative).
+  const incomeCap = product.activeConfig?.incomeCap;
+  const incomeValue = useWatch({ control, name: incomeCap?.incomeField ?? "__none__" }) as string | undefined;
+  const eligibleHint = useMemo(() => {
+    if (!incomeCap) return null;
+    const income = stripGrouping(incomeValue ?? "");
+    if (!/^\d+(\.\d{1,2})?$/.test(income) || dec(income).lte(0)) return `Enter monthly income to see the eligible maximum (${incomeCap.maxPercentOfMonthlyIncome}% of income).`;
+    const limit = percentOf(dec(income), incomeCap.maxPercentOfMonthlyIncome).toDecimalPlaces(2, D.ROUND_DOWN);
+    const productMax = product.activeConfig?.maximumPrincipal;
+    const capped = productMax && dec(productMax).lt(limit);
+    return `Eligible maximum: ${formatNgn((capped ? dec(productMax) : limit).toFixed(2))} (${incomeCap.maxPercentOfMonthlyIncome}% of income${capped ? ", capped at product maximum" : ""}).`;
+  }, [incomeCap, incomeValue, product.activeConfig?.maximumPrincipal]);
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
@@ -177,6 +191,11 @@ export function CalculatorForm({
             {hint && (
               <p id={`${id}-hint`} className="text-xs text-muted-foreground">
                 {hint}
+              </p>
+            )}
+            {f.name === "principal" && eligibleHint && (
+              <p className="rounded-md bg-primary/5 px-2 py-1 text-xs font-medium text-primary" aria-live="polite">
+                {eligibleHint}
               </p>
             )}
             {error && (

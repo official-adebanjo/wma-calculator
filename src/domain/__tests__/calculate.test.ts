@@ -46,7 +46,7 @@ describe("Nano / Payday validation", () => {
     [30, true],
     [31, false],
   ])("Payday tenor %s accepted=%s (LN-PAY-002)", (tenorDays, ok) => {
-    expect(run("PAYDAY", { principal: "100000", tenorDays }).status === "CALCULATED").toBe(ok);
+    expect(run("PAYDAY", { monthlyIncome: "300000", principal: "100000", tenorDays }).status === "CALCULATED").toBe(ok);
   });
 
   it("rejects negative, malformed and excess-precision amounts without coercing to zero", () => {
@@ -60,15 +60,55 @@ describe("Nano / Payday validation", () => {
   });
 
   it("payday early settlement caps interest at actual days used (LN-PAY-003)", () => {
-    const r = run("PAYDAY", { principal: "200000", tenorDays: 15, actualDaysUsed: 10 });
+    const r = run("PAYDAY", { monthlyIncome: "400000", principal: "200000", tenorDays: 15, actualDaysUsed: 10 });
     expect(secondary(r)).toMatchObject({ interest: "6000.00", settlementAmount: "206000.00", interestSaved: "3000.00" });
     expect(r.secondary[0].ruleStatus).toBe("PROVISIONAL");
   });
 
   it("payday early settlement beyond tenor is rejected", () => {
-    const r = run("PAYDAY", { principal: "200000", tenorDays: 15, actualDaysUsed: 16 });
+    const r = run("PAYDAY", { monthlyIncome: "400000", principal: "200000", tenorDays: 15, actualDaysUsed: 16 });
     expect(r.status).toBe("ERROR");
     expect(r.fieldErrors[0].field).toBe("actualDaysUsed");
+  });
+
+  describe("payday income cap (≤ 50% of monthly income)", () => {
+    const pay = (monthlyIncome: string, principal: string) => run("PAYDAY", { monthlyIncome, principal, tenorDays: 15 });
+
+    it("accepts exactly 50% and rejects one kobo over", () => {
+      expect(pay("400000", "200000").status).toBe("CALCULATED");
+      const over = pay("400000", "200000.01");
+      expect(over.status).toBe("ERROR");
+      expect(over.fieldErrors[0].field).toBe("principal");
+      expect(over.fieldErrors[0].message).toContain("₦200,000.00");
+      expect(over.summary).toEqual([]);
+    });
+
+    it("never lets half-kobo rounding exceed the true 50%", () => {
+      // 50% of 100,000.01 = 50,000.005 → 50,000.01 would be over the limit.
+      expect(pay("100000.01", "50000.01").status).toBe("ERROR");
+      expect(pay("100000.01", "50000.00").status).toBe("CALCULATED");
+    });
+
+    it("applies the lower of the income cap and the ₦500,000 product cap", () => {
+      const r = pay("2000000", "500000");
+      expect(r.status).toBe("CALCULATED");
+      expect(summary(r)).toMatchObject({ monthlyIncome: "2000000.00", eligibleMax: "500000.00", capUtilisation: "100%" });
+      expect(pay("2000000", "500000.01").fieldErrors[0].field).toBe("principal");
+    });
+
+    it("reports income, eligible maximum and utilisation", () => {
+      const s = summary(pay("400000", "100000"));
+      expect(s).toMatchObject({ monthlyIncome: "400000.00", eligibleMax: "200000.00", capUtilisation: "50%", totalRepayable: "104500.00" });
+    });
+
+    it("requires monthly income", () => {
+      const r = run("PAYDAY", { principal: "100000", tenorDays: 15 });
+      expect(r.fieldErrors.map((e) => e.field)).toContain("monthlyIncome");
+    });
+
+    it("uses the new 1.1 configuration; 1.0 is retired", () => {
+      expect(pay("400000", "100000").configVersionId).toBe("PAYDAY-1.1");
+    });
   });
 
   it("shows a single due amount, never invented installments", () => {

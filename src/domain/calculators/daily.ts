@@ -1,5 +1,5 @@
 import { addDays } from "../dates";
-import { componentRounder, dec, percentOf } from "../money";
+import { componentRounder, D, dec, type Dec, formatNgn, percentOf } from "../money";
 import type { SecondaryAnalysis } from "../types";
 import {
   type CalculatorStrategy,
@@ -28,6 +28,31 @@ export const dailyProratedLoan: CalculatorStrategy = (ctx) => {
 
   const principal = dec(ctx.inputs.principal as string);
   const days = ctx.inputs.tenorDays as number;
+
+  // Income-based eligibility cap (Payday): principal ≤ cap% × monthly income, inclusive.
+  const cap = ctx.config.incomeCap;
+  let eligibility: { income: Dec; incomeLimit: Dec; eligibleMax: Dec; productMax: Dec | null } | null = null;
+  if (cap) {
+    const income = dec(ctx.inputs[cap.incomeField] as string);
+    // Round DOWN: a 2dp principal ≤ floor(limit) exactly when it is ≤ the true limit.
+    const incomeLimit = percentOf(income, cap.maxPercentOfMonthlyIncome).toDecimalPlaces(2, D.ROUND_DOWN);
+    const productMax = ctx.config.maximumPrincipal ? dec(ctx.config.maximumPrincipal) : null;
+    const eligibleMax = productMax && productMax.lt(incomeLimit) ? productMax : incomeLimit;
+    if (principal.gt(eligibleMax)) {
+      out.status = "ERROR";
+      out.errorCode = "VALIDATION_FAILED";
+      out.message = "Principal exceeds the eligible maximum for the stated monthly income.";
+      out.fieldErrors.push({
+        field: "principal",
+        message: `Exceeds eligible maximum of ${formatNgn(m(eligibleMax))} (${cap.maxPercentOfMonthlyIncome}% of monthly income ${formatNgn(m(income))}${
+          productMax && eligibleMax.eq(productMax) ? ", capped at the product maximum" : ""
+        }).`,
+      });
+      return out;
+    }
+    eligibility = { income, incomeLimit, eligibleMax, productMax };
+  }
+
   const interest = r(percentOf(principal, rate.percent).times(days));
   const total = r(principal.plus(interest));
 
@@ -50,6 +75,30 @@ export const dailyProratedLoan: CalculatorStrategy = (ctx) => {
     { sequence: 2, label: "Interest", amount: m(interest), type: "INTEREST", explanation: `${rate.percent}% per day for ${days} days.` },
     { sequence: 3, label: "Total repayable at maturity", amount: m(total), type: "INSTALLMENT", explanation: "Single repayment due at maturity." },
   ];
+
+  if (cap && eligibility) {
+    const { income, incomeLimit, eligibleMax } = eligibility;
+    const utilisation = principal.dividedBy(eligibleMax).times(100).toDecimalPlaces(2);
+    out.summary.splice(
+      1,
+      0,
+      { key: "monthlyIncome", label: "Registered monthly income", value: m(income), kind: "money" },
+      { key: "eligibleMax", label: "Eligible maximum", value: m(eligibleMax), kind: "money" },
+      { key: "capUtilisation", label: "Eligibility used", value: `${utilisation.toString()}%`, kind: "text" },
+    );
+    out.steps.unshift(
+      { label: "Income cap", expression: `${m(income)} × ${cap.maxPercentOfMonthlyIncome}%`, result: m(incomeLimit) },
+      {
+        label: "Eligible maximum",
+        expression: eligibility.productMax ? `min(${m(incomeLimit)}, product max ${m(eligibility.productMax)})` : m(incomeLimit),
+        result: m(eligibleMax),
+      },
+      { label: "Eligibility check", expression: `${m(principal)} ≤ ${m(eligibleMax)}`, result: "PASS" },
+    );
+    out.assumptions.unshift(
+      `Principal may not exceed ${cap.maxPercentOfMonthlyIncome}% of the registered monthly income (inclusive) or the product maximum, whichever is lower. Other salary-evaluation criteria are not modelled.`,
+    );
+  }
 
   const startDate = ctx.inputs.startDate as string | undefined;
   if (startDate) {

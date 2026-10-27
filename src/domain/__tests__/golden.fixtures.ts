@@ -39,8 +39,8 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "LN-PAY-001",
     productCode: "PAYDAY",
-    configVersionId: "PAYDAY-1.0",
-    inputs: { principal: "200000", tenorDays: 15 },
+    configVersionId: "PAYDAY-1.1",
+    inputs: { monthlyIncome: "400000", principal: "200000", tenorDays: 15 },
     expectedStatus: "CALCULATED",
     expectedSummary: { grossInterest: "9000.00", totalRepayable: "209000.00" },
     source: "Loan spec — Payday worked example",

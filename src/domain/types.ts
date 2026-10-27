@@ -155,6 +155,11 @@ export interface ProductConfigVersion {
   tax?: {
     withholdingTaxPercent: string;
   };
+  /** Eligibility cap: principal may not exceed this % of the stated monthly income (inclusive). */
+  incomeCap?: {
+    incomeField: string;
+    maxPercentOfMonthlyIncome: string;
+  };
   roundingPolicy: RoundingPolicy;
   features: Record<string, FeatureToggle>;
   formulaVersion: string;

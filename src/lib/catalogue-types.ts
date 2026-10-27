@@ -38,6 +38,7 @@ export interface ActiveConfigView {
   ratePercent?: string;
   rateProvenance?: string;
   withholdingTaxPercent?: string;
+  incomeCap?: { incomeField: string; maxPercentOfMonthlyIncome: string };
   roundingPolicy: RoundingPolicy;
   formulaVersion: string;
   features: Record<string, FeatureToggle>;

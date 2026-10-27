@@ -12,7 +12,7 @@ It calculates estimates with a full, reproducible breakdown. It never creates lo
 | Product | Status | Notes |
 | --- | --- | --- |
 | Nano Loan | Active | 0.30%/day is the spec's worked-example rate (flagged as illustrative) |
-| Payday Loan | Active | Early-settlement preview is **provisional** |
+| Payday Loan | Active | Principal capped at 50% of registered monthly income (and ₦500,000). Early-settlement preview is **provisional** |
 | Personal Loan — Private | Active | Flat and reducing balance (equal principal); early-settlement preview is **provisional** |
 | RTN | Active | At-maturity confirmed; upfront and early withdrawal are **provisional**; top-up and partial withdrawal disabled |
 | REAP / RWIN | Validation only | No approved rate table, so no projection is ever shown |

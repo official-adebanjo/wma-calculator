@@ -126,6 +126,36 @@ const paydayV1: ProductConfigVersion = {
   ...SEED_META,
 };
 
+// 1.1 adds the income-based eligibility cap. 1.0 is retired (never edited in
+// place) so scenarios saved under it remain reproducible from their snapshot.
+const paydayV1Retired: ProductConfigVersion = { ...paydayV1, status: "RETIRED", effectiveTo: "2026-10-27" };
+
+const paydayV1_1: ProductConfigVersion = {
+  ...paydayV1,
+  id: "PAYDAY-1.1",
+  version: "1.1",
+  status: "ACTIVE",
+  effectiveFrom: "2026-10-27",
+  effectiveTo: null,
+  incomeCap: { incomeField: "monthlyIncome", maxPercentOfMonthlyIncome: "50" },
+  formulaVersion: "PAYDAY-F2",
+  ruleNotes: [
+    paydayV1.ruleNotes[0],
+    {
+      id: "PAY-R4",
+      status: "CONFIRMED",
+      note: "Eligible principal is capped at 50% of the registered monthly income (inclusive), and never above the ₦500,000 product maximum.",
+    },
+    {
+      id: "PAY-R2",
+      status: "OPEN",
+      note: "Other salary-evaluation criteria (employer, payroll verification, existing obligations) are not modelled by this calculator.",
+    },
+    paydayV1.ruleNotes[2],
+  ],
+  sources: [...paydayV1.sources, { document: "RFS product rule (QA request)", section: "Payday income cap — 2026-10-27" }],
+};
+
 const personalPrivateV1: ProductConfigVersion = {
   id: "PERSONAL_PRIVATE-1.0",
   productCode: "PERSONAL_PRIVATE",
@@ -336,6 +366,14 @@ export const PRODUCTS: ProductDefinition[] = [
     status: "ACTIVE",
     description: "Salary-backed loan up to NGN 500,000 for 7–30 days, simple daily interest.",
     fields: [
+      {
+        kind: "money",
+        name: "monthlyIncome",
+        label: "Registered monthly income (₦)",
+        required: true,
+        min: "0.01",
+        help: "Principal may not exceed 50% of this amount.",
+      },
       { kind: "money", name: "principal", label: "Principal amount (₦)", required: true, min: "0.01", max: "500000.00" },
       { kind: "integer", name: "tenorDays", label: "Tenor", required: true, min: 7, max: 30, unit: "days" },
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display the due date." },
@@ -350,7 +388,7 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional, provisional. Must not exceed the tenor.",
       },
     ],
-    versions: [paydayV1],
+    versions: [paydayV1Retired, paydayV1_1],
   },
   {
     code: "PERSONAL_PRIVATE",
