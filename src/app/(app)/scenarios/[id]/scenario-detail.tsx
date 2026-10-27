@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import { MoneyInput } from "@/components/money-input";
 import { PageHeader } from "@/components/page-header";
 import { ResultView } from "@/components/result-view";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -78,7 +79,7 @@ function QaNotesForm({ scenario, onSaved }: { scenario: Scenario; onSaved: (s: S
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="qa-observed">Observed value (₦)</Label>
-              <Input id="qa-observed" inputMode="decimal" value={observedValue} onChange={(e) => setObservedValue(e.target.value)} placeholder="e.g. 1041609.59" />
+              <MoneyInput id="qa-observed" value={observedValue} onChange={setObservedValue} placeholder="e.g. 1,041,609.59" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="qa-outcome">Outcome</Label>

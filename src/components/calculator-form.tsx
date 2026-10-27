@@ -12,6 +12,8 @@ import type { CalculationResult, InputFieldDef } from "@/domain/types";
 import { api, ApiRequestError } from "@/lib/api-client";
 import type { ProductView } from "@/lib/catalogue-types";
 import { cn } from "@/lib/utils";
+import { DatePicker } from "./date-picker";
+import { MoneyInput, stripGrouping } from "./money-input";
 
 type FormValues = Record<string, string>;
 
@@ -34,8 +36,14 @@ function fieldHint(f: InputFieldDef): string | undefined {
   return parts.join(" · ") || undefined;
 }
 
-function cleanInputs(values: FormValues): Record<string, string> {
-  return Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined && String(v).trim() !== ""));
+/** Drops blanks and removes display-only thousands separators from money fields. */
+function cleanInputs(values: FormValues, fields: InputFieldDef[]): Record<string, string> {
+  const money = new Set(fields.filter((f) => f.kind === "money").map((f) => f.name));
+  return Object.fromEntries(
+    Object.entries(values)
+      .filter(([, v]) => v !== undefined && String(v).trim() !== "")
+      .map(([k, v]) => [k, money.has(k) ? stripGrouping(String(v)) : String(v)]),
+  );
 }
 
 export function CalculatorForm({
@@ -81,7 +89,7 @@ export function CalculatorForm({
       return;
     }
     setQaError(null);
-    const payload: CalculationRequestPayload = { productCode: product.code, inputs: cleanInputs(values), qaOptions: qaParsed.data };
+    const payload: CalculationRequestPayload = { productCode: product.code, inputs: cleanInputs(values, product.fields), qaOptions: qaParsed.data };
     try {
       const { data } = await api<CalculationResult>("/api/calculations", { method: "POST", body: JSON.stringify(payload) });
       for (const e of data.fieldErrors) setError(e.field, { type: "server", message: e.message });
@@ -127,22 +135,43 @@ export function CalculatorForm({
                   </Select>
                 )}
               />
+            ) : f.kind === "money" ? (
+              <Controller
+                control={control}
+                name={f.name}
+                render={({ field }) => (
+                  <MoneyInput
+                    id={id}
+                    name={field.name}
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={describedBy}
+                  />
+                )}
+              />
+            ) : f.kind === "date" ? (
+              <Controller
+                control={control}
+                name={f.name}
+                render={({ field }) => (
+                  <DatePicker id={id} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} invalid={Boolean(error)} describedBy={describedBy} />
+                )}
+              />
             ) : (
               <div className="relative">
-                {f.kind === "money" && <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground">₦</span>}
                 <Input
                   id={id}
-                  type={f.kind === "date" ? "date" : "text"}
-                  inputMode={f.kind === "money" ? "decimal" : f.kind === "integer" ? "numeric" : undefined}
+                  type="text"
+                  inputMode="numeric"
                   autoComplete="off"
-                  className={cn("tabular-nums", f.kind === "money" && "pl-7", f.kind === "integer" && f.unit && "pr-16")}
+                  className={cn("tabular-nums", f.unit && "pr-16")}
                   aria-invalid={Boolean(error)}
                   aria-describedby={describedBy}
                   {...register(f.name)}
                 />
-                {f.kind === "integer" && f.unit && (
-                  <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">{f.unit}</span>
-                )}
+                {f.unit && <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">{f.unit}</span>}
               </div>
             )}
             {hint && (

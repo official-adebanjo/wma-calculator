@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { canReviewConfig, ROLE_LABELS, type Role } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./auth-provider";
+import { BrandMark } from "./brand-mark";
 import { ThemeToggle } from "./theme-toggle";
 
 interface NavItem {
@@ -100,7 +101,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function Brand() {
   return (
     <Link href="/dashboard" className="flex items-center gap-2.5">
-      <span className="grid size-8 place-items-center rounded-md bg-primary font-mono text-sm font-bold text-primary-foreground">₦</span>
+      <BrandMark />
       <span className="leading-tight">
         <span className="block text-sm font-semibold">RFS Calculator</span>
         <span className="block text-[11px] text-sidebar-foreground/60">QA reference tool</span>

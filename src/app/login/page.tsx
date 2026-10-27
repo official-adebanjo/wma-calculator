@@ -8,6 +8,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandMark } from "@/components/brand-mark";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { clientAuth } from "@/lib/firebase/client";
@@ -52,7 +53,7 @@ function LoginForm() {
     <div className="grid min-h-dvh place-items-center bg-muted/40 px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
         <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-md bg-primary font-mono text-lg font-bold text-primary-foreground">₦</span>
+          <BrandMark className="size-10" />
           <div>
             <h1 className="text-lg font-semibold">RFS Loan &amp; Investment Calculator</h1>
             <p className="text-sm text-muted-foreground">Internal QA reference tool</p>
