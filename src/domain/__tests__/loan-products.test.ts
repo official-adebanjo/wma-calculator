@@ -49,10 +49,11 @@ describe("loan product structure", () => {
     expect(ids).toEqual(["PERSONAL_PRIVATE-1.0:RETIRED", "PERSONAL_PRIVATE-1.1:RETIRED", "PERSONAL-1.2:ACTIVE"]);
   });
 
-  it("Public Sector Loan stays blocked and never reuses Personal Loan rules", () => {
-    const r = run("PUBLIC_SECTOR", { principal: "6000000", tenorMonths: 12 });
-    expect(r.status).toBe("BLOCKED");
-    expect(r.productName).toBe("Public Sector Loan");
-    expect(r.summary).toEqual([]);
+  it("Public Sector Loan is active and offers the same repayment plans as Personal Loan", () => {
+    const pub = getProduct("PUBLIC_SECTOR")!;
+    expect(pub.status).toBe("ACTIVE");
+    const plan = pub.fields.find((f) => f.name === "interestModel");
+    expect(plan?.kind === "select" && plan.options.map((o) => o.label)).toEqual(["Equal monthly repayment", "Declining (reducing balance) repayment"]);
+    expect(pub.versions.find((v) => v.id === "PUBLIC_SECTOR-0.0")?.status).toBe("RETIRED");
   });
 });

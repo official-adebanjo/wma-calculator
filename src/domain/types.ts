@@ -190,6 +190,13 @@ export interface ProductConfigVersion {
     managementFee: { field: string; basis: "PRINCIPAL" };
     withholdingTax: { field: string; basis: "INTEREST" };
   };
+  /** Rate entered per calculation (percent field name) instead of a configured rate. */
+  rateInputField?: string;
+  /**
+   * Pre-eligibility: the applicant's net monthly salary must be at least the
+   * corridor's configured minimum (inclusive). Both are calculation inputs.
+   */
+  salaryEligibility?: { salaryField: string; minimumField: string };
   /** Eligibility cap: principal may not exceed this % of the stated monthly income (inclusive). */
   incomeCap?: {
     incomeField: string;
@@ -298,7 +305,8 @@ export interface CalculationResult {
   configVersionId: string | null;
   configVersion: string | null;
   formulaVersion: string | null;
-  rateSource: "CONFIGURATION" | "QA_OVERRIDE" | "NONE";
+  /** ENTERED: a rate typed into the calculation (e.g. a corridor rate from the Admin Portal). */
+  rateSource: "CONFIGURATION" | "ENTERED" | "QA_OVERRIDE" | "NONE";
   roundingMode: RoundingMode | null;
   calculatedAt: string;
   inputs: Record<string, unknown>;

@@ -50,15 +50,26 @@ export function m(v: Dec): string {
 }
 
 /** Rate for the product: QA override if supplied, else the configured rate. */
-export function resolveFlatRate(ctx: CalcContext): { percent: string; source: "CONFIGURATION" | "QA_OVERRIDE" } | null {
+type RateSource = "CONFIGURATION" | "ENTERED" | "QA_OVERRIDE";
+
+/** Rate for the product: QA override, else a rate entered in the calculation, else the configured rate. */
+export function resolveFlatRate(ctx: CalcContext): { percent: string; source: RateSource } | null {
   if (ctx.rateOverridePercent) return { percent: ctx.rateOverridePercent, source: "QA_OVERRIDE" };
+  const entered = ctx.config.rateInputField ? (ctx.inputs[ctx.config.rateInputField] as string | undefined) : undefined;
+  if (entered) return { percent: entered, source: "ENTERED" };
   if (ctx.config.ratePercent) return { percent: ctx.config.ratePercent, source: "CONFIGURATION" };
   return null;
 }
 
-export function rateWarnings(ctx: CalcContext, source: "CONFIGURATION" | "QA_OVERRIDE"): CalculationWarning[] {
+export function rateWarnings(ctx: CalcContext, source: RateSource): CalculationWarning[] {
   const out: CalculationWarning[] = [];
-  if (source === "QA_OVERRIDE") {
+  if (source === "ENTERED") {
+    out.push({
+      code: "RATE_ENTERED",
+      severity: "INFO",
+      message: "The interest rate was entered for this calculation; confirm it matches the corridor's configured rate on the Admin Portal.",
+    });
+  } else if (source === "QA_OVERRIDE") {
     out.push({
       code: "QA_RATE_OVERRIDE",
       severity: "CRITICAL",

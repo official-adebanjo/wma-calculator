@@ -137,10 +137,19 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "LN-PUB-001",
     productCode: "PUBLIC_SECTOR",
-    configVersionId: "PUBLIC_SECTOR-0.0",
-    inputs: { principal: "6000000", tenorMonths: 12 },
-    expectedStatus: "BLOCKED",
-    source: "QA matrix LN-PUB-001",
-    approval: "Blocked pending approval",
+    configVersionId: "PUBLIC_SECTOR-1.0",
+    inputs: {
+      netMonthlySalary: "250000",
+      minimumNetSalary: "100000",
+      principal: "6000000",
+      tenorMonths: 12,
+      interestModel: "FLAT",
+      monthlyRatePercent: "4",
+    },
+    expectedStatus: "CALCULATED",
+    // QA matrix: ₦500,000 principal + ₦240,000 interest per month.
+    expectedSummary: { installment: "740000.00", grossInterest: "2880000.00", totalRepayable: "8880000.00" },
+    source: "QA matrix LN-PUB-001 (4% monthly entered as the corridor rate)",
+    approval: "Public Sector rules confirmed 2026-10-28",
   },
 ];

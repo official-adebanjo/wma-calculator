@@ -414,6 +414,12 @@ const PLAN_NOTES: Record<string, string> = {
   "PER-R2": "Declining repayment: equal principal + (opening balance × monthly rate); installments fall each month. Not an amortizing annuity.",
 };
 const personalV1_1Retired: ProductConfigVersion = { ...personalV1_1, status: "RETIRED", effectiveTo: "2026-10-28" };
+// 2026-10-28: Public Sector Loan uses the Personal Loan calculation (equal or
+// declining repayment, fee/WHT deductions, early-settlement preview) with an
+// interest rate entered per calculation (set per corridor) and a net-salary
+// pre-eligibility check. MDA/corridor selection is configured elsewhere.
+const publicSectorDraftRetired: ProductConfigVersion = { ...publicSectorDraft, status: "RETIRED", effectiveTo: "2026-10-28" };
+
 const personalV1_2: ProductConfigVersion = {
   ...personalV1_1,
   id: "PERSONAL-1.2",
@@ -580,6 +586,48 @@ const rwinV0_2: ProductConfigVersion = {
   sources: [...rwinV1.sources, DEDUCED_SOURCE("4. RWIN — Rosabon Wealth Investment Note")],
 };
 
+const publicSectorV1: ProductConfigVersion = {
+  id: "PUBLIC_SECTOR-1.0",
+  productCode: "PUBLIC_SECTOR",
+  version: "1.0",
+  status: "ACTIVE",
+  effectiveFrom: "2026-10-28",
+  effectiveTo: null,
+  minimumPrincipal: "0.01",
+  maximumPrincipal: null,
+  tenorUnit: "MONTH",
+  tenorMinimum: 3,
+  tenorMaximum: 24,
+  rateModel: "MONTHLY",
+  interestModel: null, // FLAT or REDUCING_BALANCE per calculation
+  rateInputField: "monthlyRatePercent",
+  salaryEligibility: { salaryField: "netMonthlySalary", minimumField: "minimumNetSalary" },
+  loanDeductions: LOAN_DEDUCTIONS,
+  roundingPolicy: DEFAULT_ROUNDING,
+  features: {
+    earlySettlement: {
+      enabled: true,
+      ruleStatus: "PROVISIONAL",
+      note: "Same payoff as Personal Loan: remaining principal + current month's interest; future interest waived. No penalty is applied (no Public Sector penalty formula confirmed yet).",
+    },
+  },
+  formulaVersion: "PUBLIC-F1",
+  ruleNotes: [
+    { id: "PUB-R4", status: "CONFIRMED", note: "Calculation matches Personal Loan: equal monthly or declining (reducing balance) repayment with equal principal components." },
+    { id: "PUB-R5", status: "CONFIRMED", note: "Pre-eligibility: net monthly salary must be at least the corridor's minimum net salary (inclusive)." },
+    { id: "PUB-R6", status: "CONFIRMED", note: "Interest rate, management fee and WHT are corridor-configured on the Admin Portal and entered per calculation." },
+    { id: "PUB-R7", status: "CONFIRMED", note: "Tenor 3–24 months, as Personal Loan." },
+    { id: "PUB-R8", status: "CONFIRMED", note: "Corridor (MDA listing) selection and per-corridor amount limits are configured elsewhere and not modelled here." },
+    { id: "PUB-R9", status: "OPEN", note: "Penalty fees (late repayment or early liquidation) are not calculated until a formula is confirmed." },
+  ],
+  sources: [
+    { document: LOAN_SPEC, section: "Personal Loan" },
+    { document: "RFS product rule (QA request)", section: "Public Sector Loan — 2026-10-28" },
+    { document: QA_MATRIX, section: "LN-PUB-001..002" },
+  ],
+  ...SEED_META,
+};
+
 export const PRODUCTS: ProductDefinition[] = [
   {
     code: "NANO",
@@ -664,14 +712,44 @@ export const PRODUCTS: ProductDefinition[] = [
     code: "PUBLIC_SECTOR",
     name: "Public Sector Loan",
     category: "LOAN",
-    status: "BLOCKED",
-    statusReason: "No approved public-sector rate, interest model or repayment convention has been supplied (OPEN-LOAN-01). Personal Loan rules are not reused.",
-    description: "Public-sector loan. Calculation unavailable until Product/Finance approves the rules.",
+    status: "ACTIVE",
+    description: "For MDA-listed public-sector employees. Net-salary pre-eligibility, then equal monthly or declining repayment at the corridor's rate.",
     fields: [
-      { kind: "money", name: "principal", label: "Principal amount (₦)", required: true },
-      { kind: "integer", name: "tenorMonths", label: "Tenor", required: true, min: 1, unit: "months" },
+      { kind: "money", name: "netMonthlySalary", label: "Net monthly salary (₦)", required: true, min: "0.01", help: "The applicant's net (take-home) salary." },
+      {
+        kind: "money",
+        name: "minimumNetSalary",
+        label: "Corridor minimum net salary (₦)",
+        required: true,
+        min: "0.01",
+        help: "Pre-eligibility threshold configured for the corridor the MDA is listed in.",
+      },
+      { kind: "money", name: "principal", label: "Principal amount (₦)", required: true, min: "0.01" },
+      { kind: "integer", name: "tenorMonths", label: "Tenor", required: true, min: 3, max: 24, unit: "months" },
+      {
+        kind: "select",
+        name: "interestModel",
+        label: "Repayment plan",
+        required: true,
+        options: [
+          { value: "FLAT", label: "Equal monthly repayment" },
+          { value: "REDUCING_BALANCE", label: "Declining (reducing balance) repayment" },
+        ],
+      },
+      { kind: "percent", name: "monthlyRatePercent", label: "Monthly interest rate", required: true, min: "0.0001", max: "100", help: "% per month, as configured for the corridor (e.g. 4)." },
+      ...LOAN_DEDUCTION_FIELDS,
+      { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display installment due dates." },
+      {
+        kind: "integer",
+        name: "settleAfterInstallments",
+        label: "Early settlement: after installment #",
+        required: false,
+        min: 0,
+        max: 23,
+        help: "Optional, provisional. Number of installments already paid. No penalty applied.",
+      },
     ],
-    versions: [publicSectorDraft],
+    versions: [publicSectorDraftRetired, publicSectorV1],
   },
   {
     code: "RTN",

@@ -13,6 +13,7 @@ const STRATEGIES: Record<string, CalculatorStrategy> = {
   NANO: dailyProratedLoan,
   PAYDAY: dailyProratedLoan,
   PERSONAL: personalLoan,
+  PUBLIC_SECTOR: personalLoan,
   RTN: rtn,
   REAP: validationOnly,
   RWIN: validationOnly,
@@ -136,6 +137,8 @@ export function httpStatusFor(result: CalculationResult): number {
       return 200;
     case "VALIDATION_FAILED":
       return 400;
+    case "NOT_ELIGIBLE":
+      return 422;
     case "UNKNOWN_PRODUCT":
       return 404;
     case "CONFIGURATION_UNAVAILABLE":

@@ -1,5 +1,5 @@
 import { addMonths } from "../dates";
-import { componentRounder, dec, type Dec } from "../money";
+import { componentRounder, dec, type Dec, formatNgn } from "../money";
 import type { ScheduleRow, SecondaryAnalysis } from "../types";
 import {
   applyLoanDeductions,
@@ -23,9 +23,28 @@ type Model = "FLAT" | "REDUCING_BALANCE";
  */
 export const personalLoan: CalculatorStrategy = (ctx) => {
   const out = emptyOutput();
+
+  // Pre-eligibility (Public Sector): net salary must meet the corridor minimum before anything is calculated.
+  const elig = ctx.config.salaryEligibility;
+  let eligibility: { salary: Dec; minimum: Dec } | null = null;
+  if (elig) {
+    const salary = dec(ctx.inputs[elig.salaryField] as string);
+    const minimum = dec(ctx.inputs[elig.minimumField] as string);
+    if (salary.lt(minimum)) {
+      return {
+        ...out,
+        status: "ERROR",
+        errorCode: "NOT_ELIGIBLE",
+        message: "Not eligible: net monthly salary is below the corridor's minimum net salary.",
+        fieldErrors: [{ field: elig.salaryField, message: `Below the corridor minimum of ${formatNgn(m(minimum))}. The applicant cannot acquire a loan in this corridor.` }],
+      };
+    }
+    eligibility = { salary, minimum };
+  }
+
   const rate = resolveFlatRate(ctx);
   if (!rate) {
-    return { ...out, status: "BLOCKED", errorCode: "CONFIGURATION_UNAVAILABLE", message: "No monthly rate is configured." };
+    return { ...out, status: "BLOCKED", errorCode: "CONFIGURATION_UNAVAILABLE", message: "No monthly rate is configured or entered." };
   }
   if (ctx.config.rateModel !== "MONTHLY") {
     return { ...out, status: "BLOCKED", errorCode: "RATE_UNIT_MISMATCH", message: "Configured rate unit is not MONTHLY; refusing to reinterpret it." };
@@ -113,6 +132,16 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
   ];
 
   if (!applyLoanDeductions(ctx, out, principal, totalInterest, totalRepayable, r)) return out;
+
+  if (eligibility) {
+    out.summary.unshift(
+      { key: "netSalary", label: "Net monthly salary", value: m(eligibility.salary), kind: "money" },
+      { key: "minimumNetSalary", label: "Corridor minimum net salary", value: m(eligibility.minimum), kind: "money" },
+      { key: "eligibility", label: "Pre-eligibility", value: "Eligible", kind: "text" },
+    );
+    out.steps.unshift({ label: "Pre-eligibility", expression: `${m(eligibility.salary)} ≥ ${m(eligibility.minimum)}`, result: "ELIGIBLE" });
+    out.assumptions.unshift("Pre-eligibility: net monthly salary must be at least the corridor's minimum net salary (inclusive). MDA and corridor selection are configured elsewhere and not modelled.");
+  }
 
   out.assumptions.push(
     "Principal is repaid in equal monthly components (source worked-example convention).",

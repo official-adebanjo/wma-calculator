@@ -239,11 +239,12 @@ describe("status gates and invariants", () => {
     expect(run("RWIN", { principal: "49999.99" }).status).toBe("ERROR");
   });
 
-  it("public sector is BLOCKED and never reuses private-sector rules", () => {
-    const r = run("PUBLIC_SECTOR", { principal: "6000000", tenorMonths: 12 });
-    expect(r.status).toBe("BLOCKED");
+  it("public sector requires eligibility inputs and an entered rate (no defaults)", () => {
+    const r = run("PUBLIC_SECTOR", { principal: "6000000", tenorMonths: 12, interestModel: "FLAT" });
+    expect(r.status).toBe("ERROR");
+    expect(r.fieldErrors.map((e) => e.field)).toEqual(expect.arrayContaining(["netMonthlySalary", "minimumNetSalary", "monthlyRatePercent"]));
     expect(r.summary).toEqual([]);
-    expect(httpStatusFor(r)).toBe(422);
+    expect(httpStatusFor(r)).toBe(400);
   });
 
   it("QA rate override is labelled", () => {
