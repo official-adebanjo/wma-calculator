@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "emulators": "firebase emulators:start --only auth,firestore --project demo-rfs-calculator"
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-rfs-calculator",
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-rfs-calculator \"vitest run src/lib/server/__tests__/scenarios.emulator.test.ts\""
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

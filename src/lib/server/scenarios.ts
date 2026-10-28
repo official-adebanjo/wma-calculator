@@ -1,13 +1,16 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { getProduct } from "@/domain/config/products";
 import { dec } from "@/domain/money";
 import type { CalculationResult } from "@/domain/types";
 import { adminDb } from "@/lib/firebase/admin";
-import type { QaNotes, QaNotesInput, Scenario, ScenarioListItem } from "@/lib/scenario-types";
+import { type QaNotes, type QaNotesInput, type Scenario, type ScenarioListItem, scenarioNameKey } from "@/lib/scenario-types";
 import type { SessionUser } from "./auth";
 import { ApiError } from "./http";
 
 const SCENARIOS = "scenarios";
+/** One document per (user, normalised scenario name): enforces unique names. */
+const SCENARIO_NAMES = "scenarioNames";
 const AUDIT = "auditEvents";
 
 export async function writeAudit(event: {
@@ -40,9 +43,32 @@ function canSeeAll(user: SessionUser) {
 }
 
 /** Saves an immutable snapshot of a server-computed result. */
+function nameReservation(userId: string, key: string) {
+  return adminDb().collection(SCENARIO_NAMES).doc(createHash("sha256").update(`${userId}\u0000${key}`).digest("hex"));
+}
+
+export function canDeleteScenario(user: SessionUser, scenario: Pick<Scenario, "userId">): boolean {
+  return scenario.userId === user.uid || user.role === "ADMIN";
+}
+
+function duplicateNameError(name: string) {
+  return new ApiError(409, "DUPLICATE_SCENARIO_NAME", `You already have a scenario named "${name}". Choose a different name.`, { field: "name" });
+}
+
+/**
+ * Saves an immutable snapshot of a server-computed result. Names are unique per
+ * tester (ignoring case and spacing), enforced in a transaction:
+ * - a reservation document keyed by (user, name) is created with tx.create, so
+ *   two simultaneous saves of the same name cannot both succeed;
+ * - the tester's existing scenarios are also checked, covering scenarios saved
+ *   before reservations existed.
+ */
 export async function createScenario(user: SessionUser, name: string, result: CalculationResult): Promise<Scenario> {
   const configSnapshot = getProduct(result.productCode)?.versions.find((v) => v.id === result.configVersionId) ?? null;
-  const ref = adminDb().collection(SCENARIOS).doc();
+  const db = adminDb();
+  const ref = db.collection(SCENARIOS).doc();
+  const key = scenarioNameKey(name);
+  const nameRef = nameReservation(user.uid, key);
   const scenario: Scenario = {
     id: ref.id,
     name,
@@ -59,8 +85,18 @@ export async function createScenario(user: SessionUser, name: string, result: Ca
     configSnapshot,
     qaNotes: null,
   };
-  // create() fails if the document exists, so a snapshot can never be overwritten.
-  await ref.create(scenario);
+  await db.runTransaction(async (tx) => {
+    const [reserved, mine] = await Promise.all([tx.get(nameRef), tx.get(db.collection(SCENARIOS).where("userId", "==", user.uid).select("name"))]);
+    if (reserved.exists || mine.docs.some((d) => scenarioNameKey(String(d.get("name") ?? "")) === key)) throw duplicateNameError(name);
+    // create() fails if a document exists, so neither the snapshot nor the name can be overwritten.
+    tx.create(nameRef, { userId: user.uid, nameKey: key, scenarioId: ref.id, createdAt: scenario.createdAt });
+    tx.create(ref, scenario);
+  }).catch((err) => {
+    // A concurrent save that reserved the same name first surfaces as ALREADY_EXISTS (gRPC 6).
+    if (err instanceof ApiError) throw err;
+    if ((err as { code?: number }).code === 6) throw duplicateNameError(name);
+    throw err;
+  });
   await writeAudit({ user, action: "SCENARIO_CREATED", entityType: "scenario", entityId: ref.id, after: { name, calculationId: result.calculationId, configVersionId: result.configVersionId } });
   return scenario;
 }
@@ -108,6 +144,44 @@ export async function updateQaNotes(user: SessionUser, id: string, input: QaNote
   await ref.update({ qaNotes: notes });
   await writeAudit({ user, action: "SCENARIO_QA_NOTES_UPDATED", entityType: "scenario", entityId: id, before: scenario.qaNotes, after: notes });
   return { ...scenario, qaNotes: notes };
+}
+
+/**
+ * Permanently deletes a scenario (owner or admin only) and releases its name.
+ * The deletion is audited with enough detail to identify what was removed.
+ */
+export async function deleteScenario(user: SessionUser, id: string): Promise<void> {
+  const db = adminDb();
+  const ref = db.collection(SCENARIOS).doc(id);
+  const removed = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new ApiError(404, "SCENARIO_NOT_FOUND", "Scenario not found.");
+    const scenario = snap.data() as Scenario;
+    if (scenario.userId !== user.uid && !canSeeAll(user)) throw new ApiError(404, "SCENARIO_NOT_FOUND", "Scenario not found.");
+    if (!canDeleteScenario(user, scenario)) throw new ApiError(403, "FORBIDDEN", "Only the scenario owner or an administrator can delete it.");
+    const nameRef = nameReservation(scenario.userId, scenarioNameKey(scenario.name));
+    const reservation = await tx.get(nameRef);
+    tx.delete(ref);
+    // Release the name only if it is reserved for this scenario.
+    if (reservation.exists && reservation.get("scenarioId") === id) tx.delete(nameRef);
+    return scenario;
+  });
+  await writeAudit({
+    user,
+    action: "SCENARIO_DELETED",
+    entityType: "scenario",
+    entityId: id,
+    before: {
+      name: removed.name,
+      owner: removed.userName ?? removed.userEmail ?? removed.userId,
+      productCode: removed.productCode,
+      status: removed.status,
+      calculationId: removed.calculationId,
+      configVersionId: removed.configVersionId,
+      createdAt: removed.createdAt,
+      qaNotes: removed.qaNotes,
+    },
+  });
 }
 
 export async function listAudit(limit = 200) {

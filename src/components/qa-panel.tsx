@@ -18,6 +18,7 @@ export function QaPanel({ result, request }: { result: CalculationResult; reques
   const [copied, setCopied] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Scenario | null>(null);
   const canSave = result.status !== "ERROR" && request !== null;
 
@@ -39,6 +40,10 @@ export function QaPanel({ result, request }: { result: CalculationResult; reques
       setSaved(data.scenario);
       toast.success("Scenario saved", { description: `Immutable snapshot ${data.scenario.id}` });
     } catch (err) {
+      if (err instanceof ApiRequestError && err.code === "DUPLICATE_SCENARIO_NAME") {
+        setNameError(err.message);
+        return;
+      }
       toast.error("Could not save scenario", { description: err instanceof ApiRequestError ? err.message : "Request failed." });
     } finally {
       setSaving(false);
@@ -85,14 +90,31 @@ export function QaPanel({ result, request }: { result: CalculationResult; reques
         <form onSubmit={save} className="space-y-1.5 border-t pt-4">
           <Label htmlFor="scenario-name">Save as scenario</Label>
           <div className="flex gap-2">
-            <Input id="scenario-name" placeholder="e.g. RTN-CAL-001 Band B 90d" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} disabled={!canSave} />
+            <Input
+              id="scenario-name"
+              placeholder="e.g. RTN-CAL-001 Band B 90d"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setNameError(null);
+              }}
+              maxLength={120}
+              disabled={!canSave}
+              aria-invalid={Boolean(nameError)}
+              aria-describedby={nameError ? "scenario-name-error" : undefined}
+            />
             <Button type="submit" size="sm" className="h-9" disabled={!canSave || !name.trim() || saving}>
               {saving ? <Loader2 className="animate-spin" aria-hidden /> : <Save aria-hidden />}
               Save
             </Button>
           </div>
+          {nameError && (
+            <p id="scenario-name-error" role="alert" className="text-sm font-medium text-destructive">
+              {nameError}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">
-            The server recalculates from these inputs and stores an immutable snapshot with its config version.
+            Names must be unique among your scenarios. The server recalculates from these inputs and stores an immutable snapshot with its config version.
           </p>
           {saved && (
             <p className="text-sm">

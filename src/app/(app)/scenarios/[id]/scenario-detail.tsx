@@ -2,9 +2,11 @@
 
 import { ArrowLeft, Check, Copy, Download, GitCompareArrows, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/components/auth-provider";
+import { DeleteScenarioButton } from "@/components/delete-scenario-button";
 import { MoneyInput } from "@/components/money-input";
 import { NotFoundPanel } from "@/components/not-found-panel";
 import { PageHeader } from "@/components/page-header";
@@ -139,6 +141,7 @@ function QaNotesForm({ scenario, onSaved }: { scenario: Scenario; onSaved: (s: S
 }
 
 export function ScenarioDetail({ id }: { id: string }) {
+  const router = useRouter();
   const { data, error, loading } = useApi<{ scenario: Scenario }>(`/api/scenarios/${encodeURIComponent(id)}`);
   const [updated, setScenario] = useState<Scenario | null>(null);
   const scenario = updated ?? data?.scenario ?? null;
@@ -212,6 +215,7 @@ export function ScenarioDetail({ id }: { id: string }) {
                 Recalculate (current config)
               </Link>
             </Button>
+            <DeleteScenarioButton variant="button" scenario={scenario} onDeleted={() => router.push("/scenarios")} />
           </>
         }
       />

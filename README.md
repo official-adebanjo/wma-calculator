@@ -57,6 +57,7 @@ Then uncomment the emulator block in `.env.local`.
 | Command | Purpose |
 | --- | --- |
 | `npm test` | Golden tests from the QA matrix, plus boundary and invariant tests |
+| `npm run test:emulator` | Firestore integration tests (unique names, concurrent saves, delete permissions) against the local emulator; needs Java and `firebase-tools` |
 | `npm run typecheck` / `npm run lint` | Static checks |
 | `npm run build` | Production build |
 

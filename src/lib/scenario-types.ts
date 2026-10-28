@@ -50,8 +50,18 @@ export interface Scenario {
 
 export type ScenarioListItem = Omit<Scenario, "configSnapshot">;
 
+/** Tidies a scenario name for display: trimmed, inner whitespace collapsed. */
+export function cleanScenarioName(name: string): string {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+/** Key for duplicate detection: names differing only in case or spacing are the same. */
+export function scenarioNameKey(name: string): string {
+  return cleanScenarioName(name).normalize("NFKC").toLocaleLowerCase("en");
+}
+
 export const createScenarioSchema = z.object({
-  name: z.string().trim().min(1, "Name is required.").max(120),
+  name: z.string().transform(cleanScenarioName).pipe(z.string().min(1, "Name is required.").max(120, "Name must be at most 120 characters.")),
   productCode: z.string().min(1).max(40),
   inputs: z.record(z.string(), z.unknown()),
   qaOptions: z.object({ rateOverridePercent: z.string().optional(), roundingMode: z.enum(["COMPONENT", "FINAL"]).optional() }).optional(),

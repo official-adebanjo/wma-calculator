@@ -4,6 +4,7 @@ import { Download, GitCompareArrows } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { DeleteScenarioButton } from "@/components/delete-scenario-button";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -33,7 +34,12 @@ export default function ScenariosPage() {
   const [query, setQuery] = useState("");
   const [product, setProduct] = useState("ALL");
 
-  const scenarios = useMemo(() => data?.scenarios ?? [], [data]);
+  const [deleted, setDeleted] = useState<string[]>([]);
+  const scenarios = useMemo(() => (data?.scenarios ?? []).filter((s) => !deleted.includes(s.id)), [data, deleted]);
+  const onDeleted = (id: string) => {
+    setDeleted((d) => [...d, id]);
+    setSelected((cur) => cur.filter((x) => x !== id));
+  };
   const products = useMemo(() => [...new Set(scenarios.map((s) => s.productCode))].sort(), [scenarios]);
   const visible = scenarios.filter(
     (s) => (product === "ALL" || s.productCode === product) && (!query || s.name.toLowerCase().includes(query.toLowerCase()) || s.id.includes(query)),
@@ -116,6 +122,7 @@ export default function ScenariosPage() {
                         {formatDateTime(s.createdAt)}
                       </p>
                     </div>
+                    <DeleteScenarioButton scenario={s} onDeleted={onDeleted} />
                   </li>
                 ))}
               </ul>
@@ -133,6 +140,9 @@ export default function ScenariosPage() {
                     <TableHead className="hidden lg:table-cell">QA outcome</TableHead>
                     <TableHead className="hidden lg:table-cell">Config</TableHead>
                     <TableHead>Saved</TableHead>
+                    <TableHead className="w-12">
+                      <span className="sr-only">Actions</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -162,6 +172,9 @@ export default function ScenariosPage() {
                       <TableCell className="hidden lg:table-cell">{s.qaNotes?.outcome ?? "—"}</TableCell>
                       <TableCell className="hidden font-mono text-xs lg:table-cell">{s.configVersionId ?? "—"}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap text-muted-foreground">{formatDateTime(s.createdAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <DeleteScenarioButton scenario={s} onDeleted={onDeleted} />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
