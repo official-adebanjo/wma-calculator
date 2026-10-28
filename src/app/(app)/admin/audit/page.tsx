@@ -46,6 +46,28 @@ export default function AuditPage() {
       {data && (
         <Card className="py-0">
           <CardContent className="overflow-x-auto px-0">
+            <ul className="divide-y md:hidden" aria-label="Audit events">
+              {data.events.map((e) => (
+                <li key={e.id} className="space-y-1 px-4 py-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-mono text-xs font-medium break-all">{e.action}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatDateTime(e.createdAt)}</span>
+                  </div>
+                  <p className="text-sm" title={e.userEmail ?? undefined}>
+                    {personLabel(e)}
+                  </p>
+                  <p className="font-mono text-xs break-all text-muted-foreground">
+                    {e.entityType}/{e.entityId}
+                  </p>
+                  <details>
+                    <summary className="cursor-pointer text-xs">View change</summary>
+                    <pre className="mt-1 overflow-auto rounded bg-muted p-2 text-[11px]">{JSON.stringify({ before: e.beforeSnapshot, after: e.afterSnapshot }, null, 2)}</pre>
+                  </details>
+                </li>
+              ))}
+              {data.events.length === 0 && <li className="py-8 text-center text-sm text-muted-foreground">No audit events yet.</li>}
+            </ul>
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -84,6 +106,7 @@ export default function AuditPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}

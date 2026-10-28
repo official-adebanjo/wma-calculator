@@ -82,7 +82,8 @@ export function DatePicker({
           </button>
         )}
       </div>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto max-w-[calc(100vw-1rem)] p-0" align="start" collisionPadding={8}>
+        <div className="w-min">
         <Calendar
           mode="single"
           selected={selected}
@@ -98,15 +99,15 @@ export function DatePicker({
             weekend:
               "after:pointer-events-none after:absolute after:bottom-1 after:left-1/2 after:z-20 after:size-1 after:-translate-x-1/2 after:rounded-full after:bg-warning",
           }}
-          className="p-3 [--cell-size:--spacing(9)]"
+          className="p-2 [--cell-size:--spacing(8)] sm:p-3 sm:[--cell-size:--spacing(9)]"
           autoFocus
         />
-        <div className="flex items-center justify-between gap-2 border-t px-3 py-2">
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-warning" aria-hidden />
+        <div className="flex flex-col gap-1.5 border-t px-3 py-2">
+          <span className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <span className="mt-1 size-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
             Weekend: due/maturity dates are flagged
           </span>
-          <div className="flex gap-1">
+          <div className="flex justify-end gap-1">
             <Button type="button" size="sm" variant="ghost" onClick={() => pick(undefined)}>
               Clear
             </Button>
@@ -114,6 +115,7 @@ export function DatePicker({
               Today
             </Button>
           </div>
+        </div>
         </div>
       </PopoverContent>
     </Popover>

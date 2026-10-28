@@ -69,6 +69,19 @@ export function SummaryGrid({ entries }: { entries: SummaryEntry[] }) {
 
 function StepsTable({ steps }: { steps: CalculationResult["steps"] }) {
   return (
+    <>
+      <ol className="divide-y sm:hidden">
+        {steps.map((s, i) => (
+          <li key={i} className="space-y-1 py-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-medium">{s.label}</span>
+              <span className="shrink-0 text-right text-sm font-medium tabular-nums">{formatMoneyMaybe(s.result)}</span>
+            </div>
+            <p className="font-mono text-xs break-words text-muted-foreground">{s.expression}</p>
+          </li>
+        ))}
+      </ol>
+      <div className="hidden sm:block">
     <Table>
       <TableHeader>
         <TableRow>
@@ -81,17 +94,37 @@ function StepsTable({ steps }: { steps: CalculationResult["steps"] }) {
         {steps.map((s, i) => (
           <TableRow key={i}>
             <TableCell className="font-medium">{s.label}</TableCell>
-            <TableCell className="font-mono text-xs whitespace-normal break-all">{s.expression}</TableCell>
+            <TableCell className="font-mono text-xs whitespace-normal break-words">{s.expression}</TableCell>
             <TableCell className="text-right tabular-nums">{formatMoneyMaybe(s.result)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+      </div>
+    </>
   );
 }
 
 function LineItemsTable({ items }: { items: CalculationResult["lineItems"] }) {
   return (
+    <>
+      <ol className="divide-y sm:hidden">
+        {items.map((l) => (
+          <li key={l.sequence} className="space-y-0.5 py-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-medium">
+                <span className="mr-1.5 text-muted-foreground">{l.sequence}.</span>
+                {l.label}
+              </span>
+              <span className="shrink-0 text-sm font-medium tabular-nums">{formatMoneyMaybe(l.amount)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-mono">{l.type}</span> · {l.explanation}
+            </p>
+          </li>
+        ))}
+      </ol>
+      <div className="hidden sm:block">
     <Table>
       <TableHeader>
         <TableRow>
@@ -114,12 +147,39 @@ function LineItemsTable({ items }: { items: CalculationResult["lineItems"] }) {
         ))}
       </TableBody>
     </Table>
+      </div>
+    </>
   );
 }
 
 function ScheduleTable({ rows }: { rows: CalculationResult["schedule"] }) {
   const hasDates = rows.some((r) => r.dueDate);
   return (
+    <>
+      <ol className="space-y-2 md:hidden" aria-label="Repayment schedule">
+        {rows.map((r) => (
+          <li key={r.period} className="rounded-md border px-3 py-2.5 text-sm tabular-nums">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="font-medium">
+                Installment {r.period}
+                {r.dueDate && <span className="block text-xs font-normal whitespace-nowrap text-muted-foreground">due {r.dueDate}</span>}
+              </span>
+              <span className="text-base font-semibold">{formatMoneyMaybe(r.installment)}</span>
+            </div>
+            <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              <dt>Principal</dt>
+              <dd className="text-right text-foreground">{formatMoneyMaybe(r.principal)}</dd>
+              <dt>Interest</dt>
+              <dd className="text-right text-foreground">{formatMoneyMaybe(r.interest)}</dd>
+              <dt>Opening balance</dt>
+              <dd className="text-right">{formatMoneyMaybe(r.openingBalance)}</dd>
+              <dt>Closing balance</dt>
+              <dd className="text-right">{formatMoneyMaybe(r.closingBalance)}</dd>
+            </dl>
+          </li>
+        ))}
+      </ol>
+      <div className="hidden md:block">
     <Table>
       <TableHeader>
         <TableRow>
@@ -146,6 +206,8 @@ function ScheduleTable({ rows }: { rows: CalculationResult["schedule"] }) {
         ))}
       </TableBody>
     </Table>
+      </div>
+    </>
   );
 }
 

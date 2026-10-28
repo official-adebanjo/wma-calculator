@@ -215,7 +215,7 @@ export function ScenarioDetail({ id }: { id: string }) {
           </>
         }
       />
-      <div className="grid items-start gap-6 xl:grid-cols-[1fr_24rem]">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="min-w-0 space-y-6">
           <Card>
             <CardHeader>
@@ -234,7 +234,7 @@ export function ScenarioDetail({ id }: { id: string }) {
           </Card>
           <ResultView result={r} />
         </div>
-        <div className="space-y-6 xl:sticky xl:top-6">
+        <div className="min-w-0 space-y-6 xl:sticky xl:top-6">
           <QaNotesForm scenario={scenario} onSaved={setScenario} />
           {scenario.configSnapshot && (
             <Card>

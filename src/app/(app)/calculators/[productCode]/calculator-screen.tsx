@@ -207,8 +207,8 @@ export function CalculatorScreen({ productCode }: { productCode: string }) {
         </Alert>
       )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[22rem_1fr]">
-        <div className="space-y-6 lg:sticky lg:top-6">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-6 lg:sticky lg:top-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Inputs</CardTitle>

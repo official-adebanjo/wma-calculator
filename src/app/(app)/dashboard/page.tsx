@@ -55,7 +55,7 @@ export default function DashboardPage() {
         <Stat label="Not yet run" value={scenarios ? outcomes.NOT_RUN : "…"} hint="Scenarios without a recorded outcome" />
       </div>
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Products</CardTitle>

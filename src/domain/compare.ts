@@ -54,15 +54,18 @@ export function compareResults(items: { label: string; result: CalculationResult
     return { key, label: key, kind: "text", values, differs: differs(values) };
   });
 
-  const outputKeys: { key: string; label: string; kind: SummaryValueKind }[] = [];
+  const outputKeys: { key: string; labels: string[]; kind: SummaryValueKind }[] = [];
   for (const { result } of items) {
     for (const s of result.summary) {
-      if (!outputKeys.some((k) => k.key === s.key)) outputKeys.push({ key: s.key, label: s.label, kind: s.kind });
+      const existing = outputKeys.find((k) => k.key === s.key);
+      if (!existing) outputKeys.push({ key: s.key, labels: [s.label], kind: s.kind });
+      else if (!existing.labels.includes(s.label)) existing.labels.push(s.label);
     }
   }
-  const outputRows: ComparisonRow[] = outputKeys.map(({ key, label, kind }) => {
+  const outputRows: ComparisonRow[] = outputKeys.map(({ key, labels, kind }) => {
     const values = items.map(({ result }) => result.summary.find((s) => s.key === key)?.value ?? null);
-    return { key, label, kind, values, differs: differs(values) };
+    // Show every label used for this figure so values aren't read under another product's wording.
+    return { key, label: labels.join(" / "), kind, values, differs: differs(values) };
   });
 
   const warnings: CalculationWarning[] = [];

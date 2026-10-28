@@ -56,6 +56,77 @@ function RowsTable({ title, rows, columns }: { title: string; rows: ComparisonRo
   );
 }
 
+/** Phone layout: one block per row, each scenario's value on its own numbered line. */
+function MobileComparison({ comparison }: { comparison: Comparison }) {
+  const { columns } = comparison;
+  const chip = (i: number) => (
+    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary" aria-label={`Scenario ${i + 1}`}>
+      {i + 1}
+    </span>
+  );
+  const section = (title: string, rows: { key: string; label: string; values: React.ReactNode[]; differs: boolean }[]) => (
+    <Card className="gap-0 py-0">
+      <CardHeader className="border-b py-3">
+        <CardTitle className="text-sm">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="px-0">
+        <ul className="divide-y">
+          {rows.map((r) => (
+            <li key={r.key} className={cn("space-y-1 px-4 py-2.5", r.differs && "bg-warning/10")}>
+              <p className="flex items-center justify-between gap-2 text-sm font-medium">
+                {r.label}
+                <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground" aria-label={r.differs ? "Differs" : "Same"}>
+                  {r.differs ? "≠ differs" : "= same"}
+                </span>
+              </p>
+              <ul className="space-y-0.5">
+                {r.values.map((v, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm tabular-nums">
+                    {chip(i)}
+                    <span className="min-w-0 break-words">{v}</span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+  const detailKeys = ["productName", "configVersionId", "formulaVersion", "roundingMode"] as const;
+  return (
+    <div className="space-y-4 md:hidden">
+      <Card className="gap-2 py-3">
+        <CardContent className="px-4">
+          <ol className="space-y-2">
+            {columns.map((c, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                {chip(i)}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium break-words">{c.label}</span>
+                  <span className="mt-1 flex flex-wrap gap-1">
+                    <StatusBadge status={c.status} />
+                    {c.rateSource === "QA_OVERRIDE" && <StatusBadge status="QA_OVERRIDE" />}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </CardContent>
+      </Card>
+      {section(
+        "Details",
+        detailKeys.map((k) => {
+          const values = columns.map((c) => c[k] ?? "—");
+          return { key: k, label: humanize(k), values, differs: new Set(values).size > 1 };
+        }),
+      )}
+      {section("Inputs", comparison.inputRows.map((r) => ({ key: r.key, label: humanize(r.label), values: r.values.map((v) => displayValue(v, r.kind)), differs: r.differs })))}
+      {section("Outputs", comparison.outputRows.map((r) => ({ key: r.key, label: r.label, values: r.values.map((v) => displayValue(v, r.kind)), differs: r.differs })))}
+    </div>
+  );
+}
+
 export function CompareScreen() {
   const router = useRouter();
   const pathname = usePathname();
@@ -87,7 +158,7 @@ export function CompareScreen() {
   return (
     <>
       <PageHeader title="Compare scenarios" description="Select two to six saved scenarios. Rows that differ are marked ≠ and highlighted." />
-      <div className="grid items-start gap-6 lg:grid-cols-[18rem_1fr]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Saved scenarios</CardTitle>
@@ -129,6 +200,8 @@ export function CompareScreen() {
           {comparison && !loading && (
             <>
               <WarningList warnings={comparison.warnings} />
+              <MobileComparison comparison={comparison} />
+              <div className="hidden space-y-4 md:block">
               <Card className="py-0">
                 <CardContent className="overflow-x-auto px-0">
                   <Table>
@@ -170,6 +243,7 @@ export function CompareScreen() {
               </Card>
               <RowsTable title="Inputs" rows={comparison.inputRows} columns={comparison.columns} />
               <RowsTable title="Outputs" rows={comparison.outputRows} columns={comparison.columns} />
+              </div>
             </>
           )}
         </div>

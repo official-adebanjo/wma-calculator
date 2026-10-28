@@ -93,6 +93,33 @@ export default function ScenariosPage() {
                 No scenarios yet. Run a calculation and use <span className="font-medium">Save as scenario</span> in the QA panel.
               </p>
             ) : (
+              <>
+              <ul className="divide-y md:hidden" aria-label="Scenarios">
+                {visible.map((s) => (
+                  <li key={s.id} className="flex gap-3 px-4 py-3" data-state={selected.includes(s.id) ? "selected" : undefined}>
+                    <Checkbox className="mt-1" aria-label={`Select ${s.name}`} checked={selected.includes(s.id)} onCheckedChange={() => toggle(s.id)} />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <Link href={`/scenarios/${s.id}`} className="block font-medium break-words hover:underline">
+                        {s.name}
+                      </Link>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-mono text-xs text-muted-foreground">{s.productCode}</span>
+                        <StatusBadge status={s.status} />
+                        {s.result.rateSource === "QA_OVERRIDE" && <StatusBadge status="QA_OVERRIDE" />}
+                        {s.qaNotes?.outcome && s.qaNotes.outcome !== "NOT_RUN" && (
+                          <span className="rounded border px-1.5 py-0.5 text-[11px] font-medium">QA: {s.qaNotes.outcome}</span>
+                        )}
+                      </div>
+                      <p className="text-sm tabular-nums">{headline(s)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(s.userName || s.userEmail) && <span title={s.userEmail ?? undefined}>{personLabel(s)} · </span>}
+                        {formatDateTime(s.createdAt)}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -139,6 +166,8 @@ export default function ScenariosPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
+              </>
             )}
           </CardContent>
         </Card>
