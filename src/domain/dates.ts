@@ -29,6 +29,13 @@ export function isWeekend(iso: string): boolean {
   return dow === 0 || dow === 6;
 }
 
+/** Next Monday–Friday on or after the date. Public holidays are not modelled. */
+export function nextBusinessDay(iso: string): string {
+  let d = iso;
+  while (isWeekend(d)) d = addDays(d, 1);
+  return d;
+}
+
 export function weekdayName(iso: string): string {
   return parse(iso).toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
 }

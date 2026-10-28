@@ -477,6 +477,78 @@ const rtnV1_1: ProductConfigVersion = {
   sources: [...rtnV1.sources, DEDUCED_SOURCE("2. RTN — Rosabon Treasury Note")],
 };
 
+// 2026-10-28: RFS approved answers to the open RTN questions (rates, bands,
+// rounding, OPEN-9, WHT, early/partial withdrawal, top-up, rollover, dates).
+const RTN_DECISIONS = { document: "RFS RTN product decisions (approved answers)", section: "A–D, 2026-10-28" };
+const rtnV1_1Retired: ProductConfigVersion = { ...rtnV1_1, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
+const rtnV1_2: ProductConfigVersion = {
+  ...rtnV1_1,
+  id: "RTN-1.2",
+  version: "1.2",
+  effectiveFrom: INVEST_EFFECTIVE,
+  effectiveTo: null,
+  formulaVersion: "RTN-F3",
+  // "Calculate at full precision": round only the figures that are output.
+  roundingPolicy: { mode: "FINAL", scale: 2, rounding: "HALF_UP" },
+  rtn: {
+    rateGuideVersion: rtnV1_1.rtn!.rateGuideVersion,
+    bands: rtnV1_1.rtn!.bands,
+    rates: rtnV1_1.rtn!.rates,
+    corporateMinimum: rtnV1_1.rtn!.corporateMinimum,
+    dayCountBasis: 365,
+    penaltySchedule: [
+      { upToPercent: "25", shareOfRatePercent: "100" },
+      { upToPercent: "50", shareOfRatePercent: "80" },
+      { upToPercent: "75", shareOfRatePercent: "60" },
+      { upToPercent: null, shareOfRatePercent: "40" },
+    ],
+    noticeDaysBeforeMaturity: 7,
+  },
+  features: {
+    upfront: {
+      enabled: true,
+      ruleStatus: "CONFIRMED",
+      note: "Divisor = 1 + (0.90 × rate × tenor ÷ 365); booked principal = funded ÷ divisor; upfront interest = funded − booked principal (net of 10% WHT, taken before payment). ₦1,000,000 at 16.19% for 90 days: gross ₦38,536.01, WHT ₦3,853.60, paid ₦34,682.41 (OPEN-9 resolved).",
+    },
+    earlyWithdrawal: {
+      enabled: true,
+      ruleStatus: "CONFIRMED",
+      note: "Penal charge = days elapsed ÷ 365 × penalty rate × amount withdrawn, taken from accrued interest; 10% WHT on the remainder. Penalty rate by tenor elapsed: ≤25% → 100%, >25–50% → 80%, >50–75% → 60%, >75% before maturity → 40%, on/after maturity → 0% (of the placement rate). At-maturity placements only; upfront claw-back is still Open.",
+    },
+    partialWithdrawal: {
+      enabled: true,
+      ruleStatus: "CONFIRMED",
+      note: "The withdrawn amount is its own early liquidation (interest, penalty, WHT on that amount only). The remainder must stay at or above the product minimum and is re-rated at its new band, same tenor and interest option; a new certificate is issued.",
+    },
+    topUp: {
+      enabled: true,
+      ruleStatus: "CONFIRMED",
+      note: "Not a separate placement: the band is set by the new total principal, the extra money earns only for the days left, and the maturity date is unchanged.",
+    },
+    rollover: {
+      enabled: true,
+      ruleStatus: "CONFIRMED",
+      note: "Principal plus net interest rolls over at the Rate Guide in force on the rollover date (from the effective date forward). The new placement starts on the calendar maturity date, so no day of interest is lost.",
+    },
+  },
+  ruleNotes: [
+    { id: "RTN-R1", status: "CONFIRMED", note: "At maturity: gross = principal × rate × tenor ÷ 365; net = gross × 0.90 (10% WHT); payout = principal + net." },
+    { id: "RTN-R2", status: "CONFIRMED", note: "Bands are closed ranges at kobo precision: ₦999,999.99 is Band A; ₦1,000,000.00 and ₦9,999,999.99 are Band B; ₦10,000,000.00 is Band C. Amounts are held at 2 decimals." },
+    { id: "RTN-R3", status: "CONFIRMED", note: "Minimum ₦50,000 (individual), ₦250,000 (corporate), inclusive." },
+    { id: "RTN-R4", status: "CONFIRMED", note: "The Rate Guide is the approved production rate table." },
+    { id: "RTN-R10", status: "CONFIRMED", note: "Band basis: confirmed principal at booking; new total principal after a top-up; remaining principal after a partial withdrawal; full amount received on an overpayment." },
+    { id: "RTN-R11", status: "CONFIRMED", note: "The rate is locked on the funds-confirmed date. A saved quote is not binding; if rates change before funds are confirmed, the new rate applies. This calculator uses the current Rate Guide." },
+    { id: "RTN-R8", status: "CONFIRMED", note: "Fixed 365-day basis, including leap years. Maturity date = start (funds-confirmed) date + tenor days." },
+    { id: "RTN-R12", status: "CONFIRMED", note: "Calculated at full precision; only output figures are rounded (2 dp, half-up)." },
+    { id: "RTN-R7", status: "CONFIRMED", note: "10% WHT applies to all interest paid to customers (individual or corporate): at maturity, upfront (inside the divisor), and on full or partial early withdrawal after the penalty." },
+    { id: "RTN-R5", status: "CONFIRMED", note: "Interest runs to the calendar maturity date; payment goes out the next business day; the customer is notified at T-7. Weekend requests in desk-approved tiers queue to the next business day. Public holidays are not modelled here." },
+    { id: "RTN-R9", status: "CONFIRMED", note: "A band × tenor × payout combination without a published rate must not be selectable or calculable." },
+    { id: "RTN-R13", status: "OPEN", note: "Early withdrawal of an upfront-interest placement (claw-back of unearned upfront interest) is not yet specified (OPEN-RTN-04)." },
+    { id: "RTN-R14", status: "OPEN", note: "Re-rating the remainder after a partial withdrawal: applied from the withdrawal day (original rate before, new band rate after), by analogy with top-ups. Confirm." },
+  ],
+  sources: [...rtnV1_1.sources, RTN_DECISIONS],
+};
+
 const reapV1Retired: ProductConfigVersion = { ...reapV1, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
 const reapV0_2: ProductConfigVersion = {
   ...reapV1,
@@ -633,22 +705,46 @@ export const PRODUCTS: ProductDefinition[] = [
         required: true,
         options: [
           { value: "MATURITY", label: "At maturity" },
-          { value: "UPFRONT", label: "Upfront (provisional)" },
+          { value: "UPFRONT", label: "Upfront (net of WHT)" },
         ],
       },
-      { kind: "date", name: "valueDate", label: "Value date", required: false, help: "Optional. Used to display the maturity date." },
+      {
+        kind: "date",
+        name: "valueDate",
+        label: "Funds-confirmed (value) date",
+        required: false,
+        help: "Optional. The rate in force on this date applies. Used for maturity, payment and notice dates.",
+      },
       {
         kind: "integer",
         name: "daysElapsed",
         label: "Early withdrawal: days elapsed",
         required: false,
         min: 1,
-        max: 364,
+        max: 365,
         unit: "days",
-        help: "Optional, provisional. At-maturity placements only.",
+        help: "Optional. At-maturity placements only. One event per calculation (withdrawal, top-up or rollover).",
+      },
+      {
+        kind: "money",
+        name: "withdrawalAmount",
+        label: "Early withdrawal: amount (₦)",
+        required: false,
+        min: "0.01",
+        help: "Optional. Leave blank to withdraw everything; a smaller amount is a partial withdrawal.",
+      },
+      { kind: "money", name: "topUpAmount", label: "Top-up: amount (₦)", required: false, min: "0.01", help: "Optional. At-maturity placements only." },
+      { kind: "integer", name: "topUpDay", label: "Top-up: on day", required: false, min: 1, max: 364, unit: "days", help: "Days after the funds-confirmed date when the top-up lands." },
+      {
+        kind: "select",
+        name: "rolloverTenorDays",
+        label: "Rollover: new tenor",
+        required: false,
+        options: [60, 90, 120, 180, 365].map((d) => ({ value: String(d), label: `${d} days` })),
+        help: "Optional. Rolls principal + net interest into a new at-maturity placement.",
       },
     ],
-    versions: [rtnV1Retired, rtnV1_1],
+    versions: [rtnV1Retired, rtnV1_1Retired, rtnV1_2],
   },
   {
     code: "REAP",

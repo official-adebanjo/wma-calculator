@@ -160,7 +160,18 @@ export interface ProductConfigVersion {
     rates: RtnRateCell[];
     corporateMinimum: string;
     dayCountBasis: 365;
-    penaltyBands: PenaltyBand[];
+    /** Legacy (RTN-1.0/1.1) penalty bands as fixed annual rates; kept for retired versions. */
+    penaltyBands?: PenaltyBand[];
+    /**
+     * Approved early-withdrawal schedule (RTN-1.2+). Bands are checked in order;
+     * the first whose upper bound (inclusive, % of tenor elapsed) is not
+     * exceeded applies; a null bound means "before maturity". On or after the
+     * maturity date the penalty is 0%. The penalty rate is shareOfRatePercent of
+     * the placement's annual rate.
+     */
+    penaltySchedule?: { upToPercent: string | null; shareOfRatePercent: string }[];
+    /** Days before maturity the customer is notified (T-n). */
+    noticeDaysBeforeMaturity?: number;
     /**
      * Unconfirmed rounding reportedly used by the source app for upfront
      * placements (OPEN-9): upfront interest rounded UP to this multiple of ₦,

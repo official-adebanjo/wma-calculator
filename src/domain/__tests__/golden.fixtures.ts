@@ -89,7 +89,7 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RTN-CAL-001",
     productCode: "RTN",
-    configVersionId: "RTN-1.1",
+    configVersionId: "RTN-1.2",
     inputs: { investorType: "INDIVIDUAL", principal: "1000000", tenorDays: "90", payoutOption: "MATURITY" },
     expectedStatus: "CALCULATED",
     expectedSummary: { grossInterest: "46232.88", tax: "4623.29", netInterest: "41609.59", maturityPayout: "1041609.59" },
@@ -99,19 +99,22 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RTN-EXIT-001",
     productCode: "RTN",
-    configVersionId: "RTN-1.1",
+    configVersionId: "RTN-1.2",
     inputs: { investorType: "INDIVIDUAL", principal: "1000000", tenorDays: "90", payoutOption: "MATURITY", daysElapsed: 30 },
     expectedStatus: "CALCULATED",
+    // 30/90 = 33.33% elapsed → 80% of 18.75% = 15% p.a. penalty rate.
+    // Accrued 15,410.958904; penal charge 12,328.767123; after penalty 3,082.191781;
+    // WHT 308.219178; net 2,773.972603 (full precision, rounded at output).
     expectedSecondary: {
       grossInterest: "15410.96",
-      penalty: "1849.32",
-      taxable: "13561.64",
-      tax: "1356.16",
-      netInterest: "12205.48",
-      payout: "1012205.48",
+      penalty: "12328.77",
+      taxable: "3082.19",
+      tax: "308.22",
+      netInterest: "2773.97",
+      payout: "1002773.97",
     },
-    source: "QA matrix RTN-EXIT-001",
-    approval: "Formula and penalty band confirmed",
+    source: "RFS RTN approved decisions C (supersedes QA matrix 2.25% band)",
+    approval: "Approved 2026-10-28",
   },
   {
     id: "RR-001",

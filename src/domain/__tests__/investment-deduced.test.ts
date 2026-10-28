@@ -40,31 +40,18 @@ describe("RTN — deduced rules document", () => {
     expect(summary(rtn("1000000", "90", "UPFRONT"))).toMatchObject({ bookedPrincipal: "965317.59", netInterest: "34682.41" });
   });
 
-  it("2.4: OPEN-9 comparison shows the source app's ₦34,690 / ₦965,310 alongside, marked Open", () => {
+  it("2.4: OPEN-9 resolved in favour of ₦34,682.41 / ₦965,317.59; no comparison panel", () => {
     const r = rtn("1000000", "90", "UPFRONT");
-    const cmp = r.secondary.find((s) => s.key === "upfrontRoundingComparison")!;
-    expect(cmp.ruleStatus).toBe("OPEN");
-    expect(Object.fromEntries(cmp.summary.map((s) => [s.key, s.value]))).toEqual({
-      recalcInterest: "34682.41",
-      recalcBooked: "965317.59",
-      sourceInterest: "34690.00",
-      sourceBooked: "965310.00",
-      difference: "7.59",
-    });
-    // The headline result stays the recalculated figure, never the unconfirmed one.
-    expect(summary(r).netInterest).toBe("34682.41");
+    expect(r.secondary.find((s) => s.key === "upfrontRoundingComparison")).toBeUndefined();
+    expect(summary(r)).toMatchObject({ netInterest: "34682.41", bookedPrincipal: "965317.59" });
   });
 
-  it("no rounding comparison for at-maturity placements", () => {
-    expect(rtn("1000000", "90", "MATURITY").secondary.find((s) => s.key === "upfrontRoundingComparison")).toBeUndefined();
-  });
-
-  it("records open WHT, day-count and rollover points on the active config", () => {
-    const v = getProduct("RTN")!.versions.find((x) => x.status === "ACTIVE")!;
-    expect(v.id).toBe("RTN-1.1");
-    expect(v.ruleNotes.map((n) => n.id)).toEqual(expect.arrayContaining(["RTN-R7", "RTN-R8", "RTN-R9"]));
-    expect(v.features.rollover?.enabled).toBe(false);
-    expect(v.features.topUp?.enabled).toBe(false);
+  it("RTN-1.1 is retired; its open points are recorded as decided in RTN-1.2", () => {
+    const versions = getProduct("RTN")!.versions;
+    expect(versions.find((x) => x.id === "RTN-1.1")?.status).toBe("RETIRED");
+    const v = versions.find((x) => x.status === "ACTIVE")!;
+    expect(v.id).toBe("RTN-1.2");
+    for (const id of ["RTN-R7", "RTN-R8", "RTN-R9"]) expect(v.ruleNotes.find((n) => n.id === id)?.status).toBe("CONFIRMED");
   });
 });
 

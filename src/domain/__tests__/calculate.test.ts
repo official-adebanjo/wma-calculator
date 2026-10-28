@@ -198,25 +198,13 @@ describe("RTN", () => {
     expect(s.principal).toBe("1000000.00");
   });
 
-  it("upfront option matches RTN-CAL-002 within the documented rounding discrepancy", () => {
+  it("upfront option matches the approved RTN-CAL-002 figures (OPEN-9 resolved)", () => {
     const r = rtnRun("1000000", "90", "UPFRONT");
     const s = summary(r);
-    expect(dec(s.bookedPrincipal).minus("965317.59").abs().lte(1)).toBe(true);
+    expect(s).toMatchObject({ bookedPrincipal: "965317.59", netInterest: "34682.41" });
     expect(dec(s.bookedPrincipal).plus(s.netInterest).toFixed(2)).toBe("1000000.00");
-    expect(r.warnings.map((w) => w.code)).toContain("RTN_UPFRONT_PROVISIONAL");
+    expect(r.warnings.map((w) => w.code)).not.toContain("RTN_UPFRONT_PROVISIONAL");
     expect(s.maturityPayout).toBeUndefined();
-  });
-
-  it("early withdrawal in a penalty-band gap is BLOCKED (RTN-EXIT-003)", () => {
-    // 23/90 = 25.56% falls between the 0–25% and 26–50% bands.
-    const r = rtnRun("1000000", "90", "MATURITY", "INDIVIDUAL", { daysElapsed: 23 });
-    expect(r.secondary[0].status).toBe("BLOCKED");
-    expect(r.secondary[0].summary.find((x) => x.key === "payout")).toBeUndefined();
-  });
-
-  it("early withdrawal above 50% elapsed is BLOCKED (no approved band)", () => {
-    const r = rtnRun("1000000", "90", "MATURITY", "INDIVIDUAL", { daysElapsed: 60 });
-    expect(r.secondary[0].status).toBe("BLOCKED");
   });
 
   it("early withdrawal on an upfront placement is BLOCKED (OPEN-RTN-04)", () => {

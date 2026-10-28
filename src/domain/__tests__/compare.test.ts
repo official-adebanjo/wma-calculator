@@ -10,7 +10,7 @@ describe("compareResults", () => {
   it("shows every label used for a shared figure, so values aren't read under another product's wording", () => {
     const c = compareResults([{ label: "Upfront", result: rtn("UPFRONT", "a") }, { label: "Maturity", result: rtn("MATURITY", "b") }]);
     const row = c.outputRows.find((r) => r.key === "netInterest")!;
-    expect(row.label).toBe("Upfront interest (net) / Net interest");
+    expect(row.label).toBe("Upfront interest paid (net) / Net interest");
     expect(row.values).toEqual(["34682.41", "41609.59"]);
     expect(row.differs).toBe(true);
   });
