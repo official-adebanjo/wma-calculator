@@ -69,6 +69,23 @@ function fieldSchema(field: InputFieldDef) {
         }
         return s;
       }
+      case "percent": {
+        const s = typeof raw === "number" ? String(raw) : typeof raw === "string" ? raw.trim().replace(/%$/, "").trim() : "";
+        if (!/^\d{1,3}(\.\d{1,4})?$/.test(s)) {
+          ctx.addIssue({ code: "custom", message: "Enter a percentage with at most 4 decimal places." });
+          return z.NEVER;
+        }
+        const value = dec(s);
+        if (field.min && value.lt(dec(field.min))) {
+          ctx.addIssue({ code: "custom", message: `Minimum is ${field.min}%.` });
+          return z.NEVER;
+        }
+        if (value.gt(dec(field.max ?? "100"))) {
+          ctx.addIssue({ code: "custom", message: `Maximum is ${field.max ?? "100"}%.` });
+          return z.NEVER;
+        }
+        return value.toString();
+      }
       case "date": {
         const s = typeof raw === "string" ? raw.trim() : "";
         if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(Date.parse(`${s}T00:00:00Z`))) {

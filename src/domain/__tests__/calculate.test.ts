@@ -6,7 +6,7 @@ import { dec } from "../money";
 import type { CalculationResult, ProductDefinition } from "../types";
 import { GOLDEN_FIXTURES } from "./golden.fixtures";
 
-const NOW = new Date("2026-10-27T12:00:00Z");
+const NOW = new Date("2026-10-28T12:00:00Z");
 const run = (code: string, inputs: Record<string, unknown>, qa = {}) =>
   calculate(code, inputs, qa, { now: NOW, calculationId: "test" });
 
@@ -106,8 +106,8 @@ describe("Nano / Payday validation", () => {
       expect(r.fieldErrors.map((e) => e.field)).toContain("monthlyIncome");
     });
 
-    it("uses the new 1.1 configuration; 1.0 is retired", () => {
-      expect(pay("400000", "100000").configVersionId).toBe("PAYDAY-1.1");
+    it("uses the current configuration; earlier versions are retired", () => {
+      expect(pay("400000", "100000").configVersionId).toBe("PAYDAY-1.2");
     });
   });
 
@@ -295,7 +295,7 @@ describe("status gates and invariants", () => {
 describe("configuration resolution", () => {
   const nano = PRODUCTS.find((p) => p.code === "NANO")!;
   const withVersions = (versions: ProductDefinition["versions"]): ProductDefinition => ({ ...nano, versions });
-  const v = nano.versions[0];
+  const v = nano.versions.find((x) => x.status === "ACTIVE")!;
 
   it("blocks overlapping active versions", () => {
     const r = resolveActiveConfig(withVersions([v, { ...v, id: "NANO-1.1" }]), NOW);

@@ -2,6 +2,7 @@ import { addMonths } from "../dates";
 import { componentRounder, dec, type Dec } from "../money";
 import type { ScheduleRow, SecondaryAnalysis } from "../types";
 import {
+  applyLoanDeductions,
   type CalculatorStrategy,
   dueDateWarning,
   emptyOutput,
@@ -110,6 +111,8 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
     })),
     { sequence: 3 + n, label: "Total repayable", amount: m(totalRepayable), type: "PAYOUT", explanation: "Principal + total interest." },
   ];
+
+  if (!applyLoanDeductions(ctx, out, principal, totalInterest, totalRepayable, r)) return out;
 
   out.assumptions.push(
     "Principal is repaid in equal monthly components (source worked-example convention).",

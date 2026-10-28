@@ -86,6 +86,16 @@ export type InputFieldDef =
       help?: string;
     }
   | {
+      kind: "percent";
+      name: string;
+      label: string;
+      required: boolean;
+      /** Inclusive bounds, percent units (e.g. "100" = 100%). */
+      min?: string;
+      max?: string;
+      help?: string;
+    }
+  | {
       kind: "date";
       name: string;
       label: string;
@@ -154,6 +164,14 @@ export interface ProductConfigVersion {
   };
   tax?: {
     withholdingTaxPercent: string;
+  };
+  /**
+   * Up-front loan deductions. Percentages are entered per calculation (they are
+   * configured on the RFS Admin Portal); blank means not applied.
+   */
+  loanDeductions?: {
+    managementFee: { field: string; basis: "PRINCIPAL" };
+    withholdingTax: { field: string; basis: "INTEREST" };
   };
   /** Eligibility cap: principal may not exceed this % of the stated monthly income (inclusive). */
   incomeCap?: {

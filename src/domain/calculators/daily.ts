@@ -2,6 +2,7 @@ import { addDays } from "../dates";
 import { componentRounder, D, dec, type Dec, formatNgn, percentOf } from "../money";
 import type { SecondaryAnalysis } from "../types";
 import {
+  applyLoanDeductions,
   type CalculatorStrategy,
   dueDateWarning,
   emptyOutput,
@@ -75,6 +76,8 @@ export const dailyProratedLoan: CalculatorStrategy = (ctx) => {
     { sequence: 2, label: "Interest", amount: m(interest), type: "INTEREST", explanation: `${rate.percent}% per day for ${days} days.` },
     { sequence: 3, label: "Total repayable at maturity", amount: m(total), type: "INSTALLMENT", explanation: "Single repayment due at maturity." },
   ];
+
+  if (!applyLoanDeductions(ctx, out, principal, interest, total, r)) return out;
 
   if (cap && eligibility) {
     const { income, incomeLimit, eligibleMax } = eligibility;

@@ -1,6 +1,7 @@
 // Rates are internal: this module must never be bundled into client code.
 import "server-only";
 import type {
+  InputFieldDef,
   ProductConfigVersion,
   ProductDefinition,
   RoundingPolicy,
@@ -345,6 +346,65 @@ const publicSectorDraft: ProductConfigVersion = {
   ...SEED_META,
 };
 
+// ---------------------------------------------------------------------------
+// 2026-10-28: optional up-front loan deductions (management fee on principal,
+// WHT on interest), deducted from the amount disbursed. Each affected version
+// is superseded by a new one; the previous version is retired, not edited.
+// ---------------------------------------------------------------------------
+const LOAN_DEDUCTIONS: NonNullable<ProductConfigVersion["loanDeductions"]> = {
+  managementFee: { field: "managementFeePercent", basis: "PRINCIPAL" },
+  withholdingTax: { field: "withholdingTaxPercent", basis: "INTEREST" },
+};
+
+const LOAN_DEDUCTION_FIELDS: InputFieldDef[] = [
+  {
+    kind: "percent",
+    name: "managementFeePercent",
+    label: "Management fee",
+    required: false,
+    max: "100",
+    help: "Optional. % of principal, deducted at disbursement (e.g. 1). Use the Admin Portal value.",
+  },
+  {
+    kind: "percent",
+    name: "withholdingTaxPercent",
+    label: "Withholding tax",
+    required: false,
+    max: "100",
+    help: "Optional. % of total interest, deducted at disbursement. Use the Admin Portal value.",
+  },
+];
+
+function withLoanDeductions(prev: ProductConfigVersion, version: string, formulaVersion: string): [ProductConfigVersion, ProductConfigVersion] {
+  const effective = "2026-10-28";
+  return [
+    { ...prev, status: "RETIRED", effectiveTo: effective },
+    {
+      ...prev,
+      id: `${prev.productCode}-${version}`,
+      version,
+      status: "ACTIVE",
+      effectiveFrom: effective,
+      effectiveTo: null,
+      loanDeductions: LOAN_DEDUCTIONS,
+      formulaVersion,
+      ruleNotes: [
+        ...prev.ruleNotes,
+        {
+          id: `${prev.productCode}-DED`,
+          status: "CONFIRMED",
+          note: "Management fee (% of principal) and withholding tax (% of interest) are deducted from the amount disbursed. Rates are set on the RFS Admin Portal and entered per calculation; blank means not applied.",
+        },
+      ],
+      sources: [...prev.sources, { document: "RFS product rule (QA request)", section: "Loan deductions — 2026-10-28" }],
+    },
+  ];
+}
+
+const [nanoV1Retired, nanoV1_1] = withLoanDeductions(nanoV1, "1.1", "NANO-F2");
+const [paydayV1_1Retired, paydayV1_2] = withLoanDeductions(paydayV1_1, "1.2", "PAYDAY-F3");
+const [personalV1Retired, personalV1_1] = withLoanDeductions(personalPrivateV1, "1.1", "PERSONAL-F2");
+
 export const PRODUCTS: ProductDefinition[] = [
   {
     code: "NANO",
@@ -355,9 +415,10 @@ export const PRODUCTS: ProductDefinition[] = [
     fields: [
       { kind: "money", name: "principal", label: "Principal amount (₦)", required: true, min: "5000.00", max: "50000.00" },
       { kind: "integer", name: "tenorDays", label: "Tenor", required: true, min: 1, max: 30, unit: "days" },
+      ...LOAN_DEDUCTION_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display the due date." },
     ],
-    versions: [nanoV1],
+    versions: [nanoV1Retired, nanoV1_1],
   },
   {
     code: "PAYDAY",
@@ -376,6 +437,7 @@ export const PRODUCTS: ProductDefinition[] = [
       },
       { kind: "money", name: "principal", label: "Principal amount (₦)", required: true, min: "0.01", max: "500000.00" },
       { kind: "integer", name: "tenorDays", label: "Tenor", required: true, min: 7, max: 30, unit: "days" },
+      ...LOAN_DEDUCTION_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display the due date." },
       {
         kind: "integer",
@@ -388,7 +450,7 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional, provisional. Must not exceed the tenor.",
       },
     ],
-    versions: [paydayV1Retired, paydayV1_1],
+    versions: [paydayV1Retired, paydayV1_1Retired, paydayV1_2],
   },
   {
     code: "PERSONAL_PRIVATE",
@@ -409,6 +471,7 @@ export const PRODUCTS: ProductDefinition[] = [
           { value: "REDUCING_BALANCE", label: "Reducing balance (equal principal)" },
         ],
       },
+      ...LOAN_DEDUCTION_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display installment due dates." },
       {
         kind: "integer",
@@ -420,7 +483,7 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional, provisional. Number of installments already paid.",
       },
     ],
-    versions: [personalPrivateV1],
+    versions: [personalV1Retired, personalV1_1],
   },
   {
     code: "PUBLIC_SECTOR",

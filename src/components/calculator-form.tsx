@@ -173,6 +173,21 @@ export function CalculatorForm({
                   <DatePicker id={id} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} invalid={Boolean(error)} describedBy={describedBy} />
                 )}
               />
+            ) : f.kind === "percent" ? (
+              <div className="relative">
+                <Input
+                  id={id}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder="Not applied"
+                  className="pr-8 tabular-nums"
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={describedBy}
+                  {...register(f.name)}
+                />
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+              </div>
             ) : (
               <div className="relative">
                 <Input
