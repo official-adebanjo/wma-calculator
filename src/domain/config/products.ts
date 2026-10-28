@@ -22,6 +22,7 @@ const LOAN_SPEC = "LOAN PRODUCT SPECIFICATIONS.docx";
 const ASSET_PRD = "RFS Unified App Asset Creation PRD.docx";
 const INVEST_JOURNEYS = "Rosabon Unified App — Investment Customer Journeys.docx";
 const QA_MATRIX = "Rosabon QA Calculation Matrix.xlsx";
+const INVEST_DEDUCED = "Rosabon Investment Deduced Calculation Rules.docx";
 
 const SEED_META = {
   createdBy: "seed:architecture-v1.0",
@@ -424,6 +425,89 @@ const personalV1_2: ProductConfigVersion = {
   sources: [...personalV1_1.sources, { document: "RFS product rule (QA request)", section: "Single Personal Loan product — 2026-10-28" }],
 };
 
+// ---------------------------------------------------------------------------
+// 2026-10-28: investment rules reviewed against "Rosabon Investment Deduced
+// Calculation Rules". Formulas and the Rate Guide are unchanged (they match);
+// the new versions record the document's open points and naming.
+// ---------------------------------------------------------------------------
+const INVEST_EFFECTIVE = "2026-10-28";
+const DEDUCED_SOURCE = (section: string) => ({ document: INVEST_DEDUCED, section });
+
+const rtnV1Retired: ProductConfigVersion = { ...rtnV1, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
+const rtnV1_1: ProductConfigVersion = {
+  ...rtnV1,
+  id: "RTN-1.1",
+  version: "1.1",
+  effectiveFrom: INVEST_EFFECTIVE,
+  effectiveTo: null,
+  formulaVersion: "RTN-F2",
+  rtn: {
+    ...rtnV1.rtn!,
+    upfrontSourceRounding: {
+      interestRoundUpTo: "10",
+      note: "Source RTN logic reportedly rounds the ₦1,000,000 / 90-day example to ₦34,690 upfront interest and ₦965,310 booked principal (interest rounded up to the next ₦10). Inferred from one example; OPEN-9 is unresolved.",
+    },
+  },
+  features: {
+    ...rtnV1.features,
+    upfront: {
+      ...rtnV1.features.upfront,
+      note: "Discounted booked-principal formula from the journey document. The recalculated figures (₦34,682.41 / ₦965,317.59 for ₦1m, 90 days) and the source app's rounded figures (₦34,690 / ₦965,310) disagree (OPEN-9); neither is the approved expected result.",
+    },
+    earlyWithdrawal: {
+      ...rtnV1.features.earlyWithdrawal,
+      note: "Penalty varies with elapsed tenor. The 0–25% / 26–50% bands come from the QA matrix (RTN-EXIT-001); the deduced rules document says exact boundaries and calculation details still require confirmation. Gaps and shares above 50% are blocked (OPEN-RTN-03). Upfront claw-back is Open (OPEN-RTN-04).",
+    },
+    topUp: {
+      ...rtnV1.features.topUp,
+      note: "A top-up may change the band; whether the new rate applies to the full balance or only the added amount is unconfirmed (OPEN-RTN-05). Disabled until approved.",
+    },
+    rollover: {
+      enabled: false,
+      ruleStatus: "OPEN",
+      note: "Rollover uses the Rate Guide in force on the rollover date; rollover principal, interest treatment and date edge cases are unconfirmed. Disabled.",
+    },
+  },
+  ruleNotes: [
+    ...rtnV1.ruleNotes,
+    { id: "RTN-R7", status: "OPEN", note: "10% WHT on interest is source-stated; Finance/Compliance must confirm the applicable tax treatment for each payment scenario." },
+    { id: "RTN-R8", status: "OPEN", note: "Day counting is unconfirmed: actual tenor days / 365 is used, including in leap years; weekend, public-holiday and maturity-date handling are undefined." },
+    { id: "RTN-R9", status: "CONFIRMED", note: "A band × tenor × payout combination without a published rate must not be selectable or calculable." },
+  ],
+  sources: [...rtnV1.sources, DEDUCED_SOURCE("2. RTN — Rosabon Treasury Note")],
+};
+
+const reapV1Retired: ProductConfigVersion = { ...reapV1, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
+const reapV0_2: ProductConfigVersion = {
+  ...reapV1,
+  id: "REAP-0.2",
+  version: "0.2",
+  effectiveFrom: INVEST_EFFECTIVE,
+  effectiveTo: null,
+  ruleNotes: [
+    { id: "REAP-R1", status: "CONFIRMED", note: "Minimum investment ₦10,000." },
+    { id: "REAP-R5", status: "CONFIRMED", note: "Goal-based plan: target amount/date, contribution details and OPEN/LOCKED plan states." },
+    { id: "REAP-R2", status: "OPEN", note: "No approved rate table or return formula: rate selection, accrual basis, contribution timing, compounding, tax, maturity payout, withdrawal adjustment and penalties are all unconfirmed (OPEN-REAP-01)." },
+    { id: "REAP-R3", status: "OPEN", note: "Conflicting 20% and 30% rate values have been observed; neither is used (RR-002)." },
+  ],
+  sources: [...reapV1.sources, DEDUCED_SOURCE("3. REAP — Rosabon Easy Access Plan")],
+};
+
+const rwinV1Retired: ProductConfigVersion = { ...rwinV1, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
+const rwinV0_2: ProductConfigVersion = {
+  ...rwinV1,
+  id: "RWIN-0.2",
+  version: "0.2",
+  effectiveFrom: INVEST_EFFECTIVE,
+  effectiveTo: null,
+  ruleNotes: [
+    { id: "RWIN-R1", status: "OPEN", note: "Minimum ₦50,000 per the journey document; an earlier QA reference states ₦20,000. ₦50,000 is applied until Product confirms." },
+    { id: "RWIN-R2", status: "OPEN", note: "No approved rate table or formula: rate selection, cycle length, accrual timing, WHT, early exit, maturity payout, rollover and reward/prize rules are unresolved (OPEN-RWIN-01)." },
+    { id: "RWIN-R3", status: "CONFIRMED", note: "RTN rates and formulas must not be reused for RWIN." },
+  ],
+  sources: [...rwinV1.sources, DEDUCED_SOURCE("4. RWIN — Rosabon Wealth Investment Note")],
+};
+
 export const PRODUCTS: ProductDefinition[] = [
   {
     code: "NANO",
@@ -519,7 +603,7 @@ export const PRODUCTS: ProductDefinition[] = [
   },
   {
     code: "RTN",
-    name: "Rosabon Treasury Note (RTN)",
+    name: "RTN — Rosabon Treasury Note",
     category: "INVESTMENT",
     status: "ACTIVE",
     description: "Fixed-tenor note, 60–365 days. Rate depends on band, tenor and payout option. 10% WHT.",
@@ -564,15 +648,15 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional, provisional. At-maturity placements only.",
       },
     ],
-    versions: [rtnV1],
+    versions: [rtnV1Retired, rtnV1_1],
   },
   {
     code: "REAP",
-    name: "REAP",
+    name: "REAP — Rosabon Easy Access Plan",
     category: "INVESTMENT",
     status: "VALIDATION_ONLY",
     statusReason: "Approved REAP rate table and return formula are missing (OPEN-REAP-01). Inputs are validated; no return is projected.",
-    description: "Goal-based savings plan. Validation only until rates and formula are approved.",
+    description: "Goal-based savings plan with a target amount and date (OPEN or LOCKED). Validation only until rates and formula are approved.",
     fields: [
       { kind: "money", name: "principal", label: "Amount (₦)", required: true, min: "10000.00" },
       {
@@ -585,13 +669,14 @@ export const PRODUCTS: ProductDefinition[] = [
           { value: "OPEN", label: "Open" },
         ],
       },
-      { kind: "integer", name: "tenorMonths", label: "Tenor (unconfirmed options)", required: false, min: 1, max: 120, unit: "months" },
+      { kind: "money", name: "targetAmount", label: "Target amount (₦)", required: false, min: "10000.00", help: "Optional. The savings goal." },
+      { kind: "date", name: "targetDate", label: "Target date", required: false, help: "Optional. When the goal should be reached." },
     ],
-    versions: [reapV1],
+    versions: [reapV1Retired, reapV0_2],
   },
   {
     code: "RWIN",
-    name: "RWIN",
+    name: "RWIN — Rosabon Wealth Investment Note",
     category: "INVESTMENT",
     status: "VALIDATION_ONLY",
     statusReason: "Approved RWIN rate table, cycle length and return formula are missing (OPEN-RWIN-01). Inputs are validated; no return is projected.",
@@ -600,7 +685,7 @@ export const PRODUCTS: ProductDefinition[] = [
       { kind: "money", name: "principal", label: "Amount (₦)", required: true, min: "50000.00" },
       { kind: "integer", name: "cycleDays", label: "Cycle (unconfirmed options)", required: false, min: 1, max: 3650, unit: "days" },
     ],
-    versions: [rwinV1],
+    versions: [rwinV1Retired, rwinV0_2],
   },
 ];
 

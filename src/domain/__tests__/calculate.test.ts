@@ -221,7 +221,7 @@ describe("RTN", () => {
 
   it("early withdrawal on an upfront placement is BLOCKED (OPEN-RTN-04)", () => {
     const r = rtnRun("1000000", "90", "UPFRONT", "INDIVIDUAL", { daysElapsed: 30 });
-    expect(r.secondary[0].status).toBe("BLOCKED");
+    expect(r.secondary.find((s) => s.key === "earlyWithdrawal")?.status).toBe("BLOCKED");
   });
 
   it("flags weekend maturity dates", () => {

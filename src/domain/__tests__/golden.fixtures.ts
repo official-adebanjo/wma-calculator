@@ -89,7 +89,7 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RTN-CAL-001",
     productCode: "RTN",
-    configVersionId: "RTN-1.0",
+    configVersionId: "RTN-1.1",
     inputs: { investorType: "INDIVIDUAL", principal: "1000000", tenorDays: "90", payoutOption: "MATURITY" },
     expectedStatus: "CALCULATED",
     expectedSummary: { grossInterest: "46232.88", tax: "4623.29", netInterest: "41609.59", maturityPayout: "1041609.59" },
@@ -99,7 +99,7 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RTN-EXIT-001",
     productCode: "RTN",
-    configVersionId: "RTN-1.0",
+    configVersionId: "RTN-1.1",
     inputs: { investorType: "INDIVIDUAL", principal: "1000000", tenorDays: "90", payoutOption: "MATURITY", daysElapsed: 30 },
     expectedStatus: "CALCULATED",
     expectedSecondary: {
@@ -116,7 +116,7 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RR-001",
     productCode: "REAP",
-    configVersionId: "REAP-0.1",
+    configVersionId: "REAP-0.2",
     inputs: { principal: "10000", planType: "LOCKED" },
     expectedStatus: "VALIDATION_ONLY",
     source: "QA matrix RR-001",
@@ -125,7 +125,7 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RW-001",
     productCode: "RWIN",
-    configVersionId: "RWIN-0.1",
+    configVersionId: "RWIN-0.2",
     inputs: { principal: "50000" },
     expectedStatus: "VALIDATION_ONLY",
     source: "QA matrix RW-001",

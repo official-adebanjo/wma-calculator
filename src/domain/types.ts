@@ -161,6 +161,12 @@ export interface ProductConfigVersion {
     corporateMinimum: string;
     dayCountBasis: 365;
     penaltyBands: PenaltyBand[];
+    /**
+     * Unconfirmed rounding reportedly used by the source app for upfront
+     * placements (OPEN-9): upfront interest rounded UP to this multiple of ₦,
+     * booked principal = funded − rounded interest. Shown for comparison only.
+     */
+    upfrontSourceRounding?: { interestRoundUpTo: string; note: string };
   };
   tax?: {
     withholdingTaxPercent: string;

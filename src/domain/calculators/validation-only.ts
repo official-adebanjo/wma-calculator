@@ -18,6 +18,10 @@ export const validationOnly: CalculatorStrategy = (ctx) => {
     if (field.name === "principal") continue;
     const v = ctx.inputs[field.name];
     if (v === undefined) continue;
+    if (field.kind === "money") {
+      out.summary.push({ key: field.name, label: field.label.replace(/ \(₦\)$/, ""), value: m(dec(v as string)), kind: "money" });
+      continue;
+    }
     const label = field.kind === "select" ? field.options.find((o) => o.value === v)?.label ?? String(v) : String(v);
     out.summary.push({ key: field.name, label: field.label, value: field.kind === "integer" && field.unit ? `${label} ${field.unit}` : label, kind: "text" });
   }

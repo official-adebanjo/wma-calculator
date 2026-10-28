@@ -1,5 +1,5 @@
 import { addDays } from "../dates";
-import { componentRounder, dec, type Dec, toPercentString } from "../money";
+import { componentRounder, dec, type Dec, round2, toPercentString } from "../money";
 import type { RtnBand, RtnPayoutOption, SecondaryAnalysis } from "../types";
 import { type CalculatorStrategy, type CalcContext, dueDateWarning, emptyOutput, m, rateWarnings, roundingAssumption } from "./shared";
 
@@ -103,7 +103,7 @@ export const rtn: CalculatorStrategy = (ctx) => {
       { sequence: 4, label: "Net interest", amount: m(net), type: "INTEREST", explanation: "Gross interest − WHT." },
       { sequence: 5, label: "Maturity payout", amount: m(payout), type: "PAYOUT", explanation: "Principal + net interest." },
     ];
-    out.assumptions.push("Simple interest, actual days / 365; no compounding.");
+    out.assumptions.push("Simple interest, actual tenor days / 365 (also in leap years; day-count basis unconfirmed); no compounding.");
     const ew = earlyWithdrawal(ctx, principal, tenor, annualRate, whtRate, r);
     if (ew) {
       if ("fieldError" in ew) {
@@ -158,6 +158,35 @@ export const rtn: CalculatorStrategy = (ctx) => {
       "Upfront interest is net of WHT because (1 − WHT) is inside the divisor; implied gross/WHT lines are derived for transparency only.",
       "Maturity amount and payout timing for upfront placements are not shown until the booking presentation is signed off.",
     );
+    // OPEN-9: show the source app's reported rounding next to the recalculated
+    // figures so testers can tell which convention a build uses. Neither is approved.
+    const sourceRounding = cfg.upfrontSourceRounding;
+    if (sourceRounding) {
+      const step = dec(sourceRounding.interestRoundUpTo);
+      const srcInterest = round2(principal.minus(principal.dividedBy(divisor))).dividedBy(step).ceil().times(step);
+      const srcBooked = principal.minus(srcInterest);
+      out.secondary.push({
+        key: "upfrontRoundingComparison",
+        title: "Upfront rounding comparison (OPEN-9)",
+        status: "CALCULATED",
+        ruleStatus: "OPEN",
+        message: `${sourceRounding.note} Compare the app's figures with both columns; do not treat either as the expected result.`,
+        summary: [
+          { key: "recalcInterest", label: "Recalculated upfront interest", value: m(upfront), kind: "money" },
+          { key: "recalcBooked", label: "Recalculated booked principal", value: m(booked), kind: "money" },
+          { key: "sourceInterest", label: `Source-app upfront interest (rounded up to ₦${sourceRounding.interestRoundUpTo})`, value: m(srcInterest), kind: "money" },
+          { key: "sourceBooked", label: "Source-app booked principal", value: m(srcBooked), kind: "money" },
+          { key: "difference", label: "Difference in upfront interest", value: m(srcInterest.minus(upfront)), kind: "money" },
+        ],
+        steps: [
+          { label: "Recalculated", expression: `${m(principal)} − ${m(principal)} / ${divisor.toDecimalPlaces(10)}`, result: m(upfront) },
+          { label: "Source-app rounding", expression: `ceil(${m(upfront)} / ${sourceRounding.interestRoundUpTo}) × ${sourceRounding.interestRoundUpTo}`, result: m(srcInterest) },
+          { label: "Source-app booked principal", expression: `${m(principal)} − ${m(srcInterest)}`, result: m(srcBooked) },
+        ],
+        lineItems: [],
+      });
+    }
+
     if (ctx.inputs.daysElapsed !== undefined) {
       out.secondary.push({
         key: "earlyWithdrawal",

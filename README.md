@@ -1,7 +1,8 @@
 # RFS Loan & Investment Calculator
 
 Internal QA reference tool for Rosabon Financial Services loan and investment products, built from
-`RFS_Loan_Investment_Calculator_Architecture.txt` and `Rosabon_QA_Calculation_Matrix.xlsx`.
+`RFS_Loan_Investment_Calculator_Architecture.txt`, `Rosabon_QA_Calculation_Matrix.xlsx` and
+`Rosabon_Investment_Deduced_Calculation_Rules.docx`.
 
 It calculates estimates with a full, reproducible breakdown. It never creates loans or investments, or moves money.
 
@@ -15,8 +16,8 @@ It calculates estimates with a full, reproducible breakdown. It never creates lo
 | Payday Loan | Active | Principal capped at 50% of registered monthly income (and ₦500,000). Early-settlement preview is **provisional** |
 | Personal Loan | Active | Repayment plan: equal monthly or declining (reducing balance). Early-settlement preview is **provisional** |
 | All loans | — | Optional management fee (% of principal) and withholding tax (% of interest), deducted from the amount disbursed |
-| RTN | Active | At-maturity confirmed; upfront and early withdrawal are **provisional**; top-up and partial withdrawal disabled |
-| REAP / RWIN | Validation only | No approved rate table, so no projection is ever shown |
+| RTN — Rosabon Treasury Note | Active | At-maturity confirmed; upfront is **provisional** and shows the OPEN-9 rounding comparison (recalculated vs source-app figures); early withdrawal **provisional**; top-up, partial withdrawal and rollover disabled |
+| REAP — Rosabon Easy Access Plan / RWIN — Rosabon Wealth Investment Note | Validation only | No approved rate table, so no projection is ever shown. REAP records target amount/date; RWIN ₦50,000 minimum pending confirmation (₦20,000 conflict) |
 | Public Sector Loan | Blocked | No approved rules; Personal Loan rules are not reused |
 
 Open rules from the QA matrix (OPEN-RTN-01…07, OPEN-LOAN-01…05, etc.) are shown in the UI next to each product.
