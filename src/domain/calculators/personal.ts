@@ -15,7 +15,7 @@ import {
 type Model = "FLAT" | "REDUCING_BALANCE";
 
 /**
- * Personal Loan — Private Sector (spec 8.4). Both models repay principal in
+ * Personal Loan (spec 8.4). Both repayment plans repay principal in
  * equal monthly components; they differ only in the interest base:
  *   FLAT:             interest = original principal × monthly rate
  *   REDUCING_BALANCE: interest = opening balance × monthly rate
@@ -88,7 +88,7 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
     { key: "principal", label: "Principal", value: m(principal), kind: "money" },
     { key: "rate", label: "Monthly rate", value: `${rate.percent}% per month`, kind: "text" },
     { key: "tenor", label: "Tenor", value: `${n} months`, kind: "text" },
-    { key: "interestModel", label: "Interest model", value: model === "FLAT" ? "Monthly flat" : "Reducing balance", kind: "text" },
+    { key: "interestModel", label: "Repayment plan", value: model === "FLAT" ? "Equal monthly" : "Declining (reducing balance)", kind: "text" },
     { key: "grossInterest", label: "Total interest", value: m(totalInterest), kind: "money" },
     { key: "tax", label: "Tax / deductions", value: "0.00", kind: "money" },
     {
@@ -169,7 +169,7 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
         lineItems: [
           { sequence: 1, label: "Remaining principal", amount: m(remaining), type: "BALANCE", explanation: `After ${k} installments.` },
           { sequence: 2, label: "Current month interest", amount: m(currentInterest), type: "INTEREST", explanation: "Interest for the active month." },
-          { sequence: 3, label: "Payoff amount", amount: m(payoff), type: "PAYOUT", explanation: "No early repayment penalty (private-sector spec)." },
+          { sequence: 3, label: "Payoff amount", amount: m(payoff), type: "PAYOUT", explanation: "No early repayment penalty (loan specification)." },
         ],
       };
       out.secondary.push(es);

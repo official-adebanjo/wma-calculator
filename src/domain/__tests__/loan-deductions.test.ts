@@ -30,12 +30,12 @@ describe("loan deductions (management fee on principal, WHT on interest)", () =>
 
   it("Personal flat: WHT is on total interest over the whole tenor", () => {
     // interest 720,000; fee 60,000; WHT 72,000; disbursed 5,868,000
-    const s = summary(run("PERSONAL_PRIVATE", { principal: "6000000", tenorMonths: 6, interestModel: "FLAT", managementFeePercent: "1", withholdingTaxPercent: "10" }));
+    const s = summary(run("PERSONAL", { principal: "6000000", tenorMonths: 6, interestModel: "FLAT", managementFeePercent: "1", withholdingTaxPercent: "10" }));
     expect(s).toMatchObject({ grossInterest: "720000.00", managementFee: "60000.00", tax: "72000.00", amountDisbursed: "5868000.00", totalRepayable: "6720000.00" });
   });
 
   it("Personal reducing balance uses the reducing total interest", () => {
-    const s = summary(run("PERSONAL_PRIVATE", { principal: "6000000", tenorMonths: 6, interestModel: "REDUCING_BALANCE", withholdingTaxPercent: "10" }));
+    const s = summary(run("PERSONAL", { principal: "6000000", tenorMonths: 6, interestModel: "REDUCING_BALANCE", withholdingTaxPercent: "10" }));
     expect(s).toMatchObject({ grossInterest: "420000.00", tax: "42000.00", amountDisbursed: "5958000.00" });
   });
 

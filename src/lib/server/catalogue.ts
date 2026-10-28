@@ -58,7 +58,7 @@ function interestLabel(v: ProductView): string {
     case "DAILY":
       return `${c.ratePercent}% per day, simple`;
     case "MONTHLY":
-      return `${c.ratePercent}% per month, flat or reducing`;
+      return `${c.ratePercent}% per month, equal or declining repayment`;
     case "TIERED":
       return "Rate Guide by band × tenor × payout";
     default:

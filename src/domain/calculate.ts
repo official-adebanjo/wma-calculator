@@ -12,7 +12,7 @@ import type { CalculationResult, FieldError } from "./types";
 const STRATEGIES: Record<string, CalculatorStrategy> = {
   NANO: dailyProratedLoan,
   PAYDAY: dailyProratedLoan,
-  PERSONAL_PRIVATE: personalLoan,
+  PERSONAL: personalLoan,
   RTN: rtn,
   REAP: validationOnly,
   RWIN: validationOnly,
@@ -40,7 +40,8 @@ export function calculate(
   const base: CalculationResult = {
     calculationId: opts.calculationId ?? globalThis.crypto.randomUUID(),
     status: "ERROR",
-    productCode,
+    // Canonical code, so a retired alias (e.g. PERSONAL_PRIVATE) is reported as its current product.
+    productCode: product?.code ?? productCode,
     productName: product?.name ?? productCode,
     category: product?.category ?? "LOAN",
     configVersionId: null,

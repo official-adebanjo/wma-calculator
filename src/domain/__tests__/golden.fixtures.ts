@@ -48,8 +48,8 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   },
   {
     id: "LN-PER-001",
-    productCode: "PERSONAL_PRIVATE",
-    configVersionId: "PERSONAL_PRIVATE-1.1",
+    productCode: "PERSONAL",
+    configVersionId: "PERSONAL-1.2",
     inputs: { principal: "6000000", tenorMonths: 6, interestModel: "FLAT" },
     expectedStatus: "CALCULATED",
     expectedSummary: { grossInterest: "720000.00", totalRepayable: "6720000.00", installment: "1120000.00" },
@@ -58,8 +58,8 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   },
   {
     id: "LN-PER-002",
-    productCode: "PERSONAL_PRIVATE",
-    configVersionId: "PERSONAL_PRIVATE-1.1",
+    productCode: "PERSONAL",
+    configVersionId: "PERSONAL-1.2",
     inputs: { principal: "6000000", tenorMonths: 6, interestModel: "REDUCING_BALANCE" },
     expectedStatus: "CALCULATED",
     expectedSummary: { grossInterest: "420000.00", totalRepayable: "6420000.00", installment: "1120000.00 → 1020000.00" },
@@ -68,8 +68,8 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   },
   {
     id: "LN-PER-003-FLAT",
-    productCode: "PERSONAL_PRIVATE",
-    configVersionId: "PERSONAL_PRIVATE-1.1",
+    productCode: "PERSONAL",
+    configVersionId: "PERSONAL-1.2",
     inputs: { principal: "6000000", tenorMonths: 6, interestModel: "FLAT", settleAfterInstallments: 2 },
     expectedStatus: "CALCULATED",
     expectedSecondary: { payoff: "4120000.00" },
@@ -78,8 +78,8 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   },
   {
     id: "LN-PER-003-REDUCING",
-    productCode: "PERSONAL_PRIVATE",
-    configVersionId: "PERSONAL_PRIVATE-1.1",
+    productCode: "PERSONAL",
+    configVersionId: "PERSONAL-1.2",
     inputs: { principal: "6000000", tenorMonths: 6, interestModel: "REDUCING_BALANCE", settleAfterInstallments: 2 },
     expectedStatus: "CALCULATED",
     expectedSecondary: { payoff: "4080000.00" },

@@ -120,14 +120,14 @@ describe("Nano / Payday validation", () => {
 
 describe("Personal loan", () => {
   it("reducing balance interest sequence matches LN-PER-002", () => {
-    const r = run("PERSONAL_PRIVATE", { principal: "6000000", tenorMonths: 6, interestModel: "REDUCING_BALANCE" });
+    const r = run("PERSONAL", { principal: "6000000", tenorMonths: 6, interestModel: "REDUCING_BALANCE" });
     expect(r.schedule.map((s) => s.interest)).toEqual(["120000.00", "100000.00", "80000.00", "60000.00", "40000.00", "20000.00"]);
     expect(r.schedule.map((s) => s.installment)).toEqual(["1120000.00", "1100000.00", "1080000.00", "1060000.00", "1040000.00", "1020000.00"]);
   });
 
   it("uneven division closes the balance at exactly zero and reconciles totals", () => {
     for (const interestModel of ["FLAT", "REDUCING_BALANCE"]) {
-      const r = run("PERSONAL_PRIVATE", { principal: "1000000", tenorMonths: 7, interestModel });
+      const r = run("PERSONAL", { principal: "1000000", tenorMonths: 7, interestModel });
       expect(r.schedule.at(-1)!.closingBalance).toBe("0.00");
       const principalSum = r.schedule.reduce((a, s) => a.plus(s.principal), dec(0));
       const installmentSum = r.schedule.reduce((a, s) => a.plus(s.installment), dec(0));
@@ -138,17 +138,17 @@ describe("Personal loan", () => {
   });
 
   it("tenor bounds 3–24 months", () => {
-    expect(run("PERSONAL_PRIVATE", { principal: "1000000", tenorMonths: 2, interestModel: "FLAT" }).status).toBe("ERROR");
-    expect(run("PERSONAL_PRIVATE", { principal: "1000000", tenorMonths: 25, interestModel: "FLAT" }).status).toBe("ERROR");
+    expect(run("PERSONAL", { principal: "1000000", tenorMonths: 2, interestModel: "FLAT" }).status).toBe("ERROR");
+    expect(run("PERSONAL", { principal: "1000000", tenorMonths: 25, interestModel: "FLAT" }).status).toBe("ERROR");
   });
 
   it("requires an explicit interest model", () => {
-    const r = run("PERSONAL_PRIVATE", { principal: "1000000", tenorMonths: 6 });
+    const r = run("PERSONAL", { principal: "1000000", tenorMonths: 6 });
     expect(r.fieldErrors.map((e) => e.field)).toContain("interestModel");
   });
 
   it("due dates clamp to month end", () => {
-    const r = run("PERSONAL_PRIVATE", { principal: "600000", tenorMonths: 3, interestModel: "FLAT", startDate: "2027-01-31" });
+    const r = run("PERSONAL", { principal: "600000", tenorMonths: 3, interestModel: "FLAT", startDate: "2027-01-31" });
     expect(r.schedule.map((s) => s.dueDate)).toEqual(["2027-02-28", "2027-03-31", "2027-04-30"]);
   });
 });

@@ -11,12 +11,13 @@ It calculates estimates with a full, reproducible breakdown. It never creates lo
 
 | Product | Status | Notes |
 | --- | --- | --- |
-| Nano Loan | Active | 0.30%/day is the spec's worked-example rate (flagged as illustrative) |
+| Nano Loan | Active | 0.30%/day simple interest (spec's worked-example rate, flagged as illustrative) |
 | Payday Loan | Active | Principal capped at 50% of registered monthly income (and ₦500,000). Early-settlement preview is **provisional** |
-| Personal Loan — Private | Active | Flat and reducing balance (equal principal); early-settlement preview is **provisional** |
+| Personal Loan | Active | Repayment plan: equal monthly or declining (reducing balance). Early-settlement preview is **provisional** |
+| All loans | — | Optional management fee (% of principal) and withholding tax (% of interest), deducted from the amount disbursed |
 | RTN | Active | At-maturity confirmed; upfront and early withdrawal are **provisional**; top-up and partial withdrawal disabled |
 | REAP / RWIN | Validation only | No approved rate table, so no projection is ever shown |
-| Personal Loan — Public | Blocked | No approved rules; private-sector rules are not reused |
+| Public Sector Loan | Blocked | No approved rules; Personal Loan rules are not reused |
 
 Open rules from the QA matrix (OPEN-RTN-01…07, OPEN-LOAN-01…05, etc.) are shown in the UI next to each product.
 

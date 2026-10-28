@@ -336,7 +336,7 @@ const publicSectorDraft: ProductConfigVersion = {
   formulaVersion: "NONE",
   ruleNotes: [
     { id: "PUB-R1", status: "OPEN", note: "Public-sector rate, interest model, tenor schedule and installment convention not supplied (OPEN-LOAN-01)." },
-    { id: "PUB-R2", status: "CONFIRMED", note: "Private-sector rules must not be reused by assumption." },
+    { id: "PUB-R2", status: "CONFIRMED", note: "Personal Loan rules must not be reused by assumption." },
     { id: "PUB-R3", status: "OPEN", note: "The 4% monthly flat scenario in LN-PUB-001 is user-supplied, not an approved configuration." },
   ],
   sources: [
@@ -405,6 +405,25 @@ const [nanoV1Retired, nanoV1_1] = withLoanDeductions(nanoV1, "1.1", "NANO-F2");
 const [paydayV1_1Retired, paydayV1_2] = withLoanDeductions(paydayV1_1, "1.2", "PAYDAY-F3");
 const [personalV1Retired, personalV1_1] = withLoanDeductions(personalPrivateV1, "1.1", "PERSONAL-F2");
 
+// 2026-10-28: there is a single Personal Loan product (no private/public-sector
+// split); the repayment plan is chosen per calculation. Earlier
+// PERSONAL_PRIVATE-* versions stay in its history for saved scenarios.
+const PLAN_NOTES: Record<string, string> = {
+  "PER-R1": "Equal monthly repayment: equal principal + (original principal × monthly rate) each month, so every installment is the same.",
+  "PER-R2": "Declining repayment: equal principal + (opening balance × monthly rate); installments fall each month. Not an amortizing annuity.",
+};
+const personalV1_1Retired: ProductConfigVersion = { ...personalV1_1, status: "RETIRED", effectiveTo: "2026-10-28" };
+const personalV1_2: ProductConfigVersion = {
+  ...personalV1_1,
+  id: "PERSONAL-1.2",
+  productCode: "PERSONAL",
+  version: "1.2",
+  effectiveFrom: "2026-10-28",
+  effectiveTo: null,
+  ruleNotes: personalV1_1.ruleNotes.map((n) => (PLAN_NOTES[n.id] ? { ...n, note: PLAN_NOTES[n.id] } : n)),
+  sources: [...personalV1_1.sources, { document: "RFS product rule (QA request)", section: "Single Personal Loan product — 2026-10-28" }],
+};
+
 export const PRODUCTS: ProductDefinition[] = [
   {
     code: "NANO",
@@ -453,22 +472,22 @@ export const PRODUCTS: ProductDefinition[] = [
     versions: [paydayV1Retired, paydayV1_1Retired, paydayV1_2],
   },
   {
-    code: "PERSONAL_PRIVATE",
-    name: "Personal Loan — Private Sector",
+    code: "PERSONAL",
+    name: "Personal Loan",
     category: "LOAN",
     status: "ACTIVE",
-    description: "Up to NGN 30,000,000 over 3–24 months; flat or reducing-balance monthly interest.",
+    description: "Up to NGN 30,000,000 over 3–24 months; equal monthly or declining (reducing balance) repayment.",
     fields: [
       { kind: "money", name: "principal", label: "Principal amount (₦)", required: true, min: "0.01", max: "30000000.00" },
       { kind: "integer", name: "tenorMonths", label: "Tenor", required: true, min: 3, max: 24, unit: "months" },
       {
         kind: "select",
         name: "interestModel",
-        label: "Interest model",
+        label: "Repayment plan",
         required: true,
         options: [
-          { value: "FLAT", label: "Monthly flat" },
-          { value: "REDUCING_BALANCE", label: "Reducing balance (equal principal)" },
+          { value: "FLAT", label: "Equal monthly repayment" },
+          { value: "REDUCING_BALANCE", label: "Declining (reducing balance) repayment" },
         ],
       },
       ...LOAN_DEDUCTION_FIELDS,
@@ -483,14 +502,14 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional, provisional. Number of installments already paid.",
       },
     ],
-    versions: [personalV1Retired, personalV1_1],
+    versions: [personalV1Retired, personalV1_1Retired, personalV1_2],
   },
   {
     code: "PUBLIC_SECTOR",
-    name: "Personal Loan — Public Sector",
+    name: "Public Sector Loan",
     category: "LOAN",
     status: "BLOCKED",
-    statusReason: "No approved public-sector rate, interest model or repayment convention has been supplied (OPEN-LOAN-01). Private-sector rules are not reused.",
+    statusReason: "No approved public-sector rate, interest model or repayment convention has been supplied (OPEN-LOAN-01). Personal Loan rules are not reused.",
     description: "Public-sector loan. Calculation unavailable until Product/Finance approves the rules.",
     fields: [
       { kind: "money", name: "principal", label: "Principal amount (₦)", required: true },
@@ -585,6 +604,10 @@ export const PRODUCTS: ProductDefinition[] = [
   },
 ];
 
+/** Retired product codes still referenced by saved scenarios. */
+const PRODUCT_CODE_ALIASES: Record<string, string> = { PERSONAL_PRIVATE: "PERSONAL" };
+
 export function getProduct(code: string): ProductDefinition | undefined {
-  return PRODUCTS.find((p) => p.code === code);
+  const resolved = PRODUCT_CODE_ALIASES[code] ?? code;
+  return PRODUCTS.find((p) => p.code === resolved);
 }
