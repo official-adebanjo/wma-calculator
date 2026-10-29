@@ -2,6 +2,7 @@ import { addMonths } from "../dates";
 import { componentRounder, dec, type Dec, formatNgn } from "../money";
 import type { ScheduleRow, SecondaryAnalysis } from "../types";
 import {
+  applyLatePenalty,
   applyLoanDeductions,
   type CalculatorStrategy,
   dueDateWarning,
@@ -132,6 +133,7 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
   ];
 
   if (!applyLoanDeductions(ctx, out, principal, totalInterest, totalRepayable, r)) return out;
+  if (!applyLatePenalty(ctx, out, dec(schedule[0].installment), "first installment", r)) return out;
 
   if (eligibility) {
     out.summary.unshift(
@@ -146,7 +148,7 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
   out.assumptions.push(
     "Principal is repaid in equal monthly components (source worked-example convention).",
     "Where principal does not divide evenly, the final installment absorbs the remainder.",
-    "No fees, insurance or penalties are included.",
+    "No insurance is included. A late-payment penalty is calculated only when days overdue and a penalty rate are entered.",
     roundingAssumption(ctx.rounding),
   );
   if (startDate) {

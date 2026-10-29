@@ -107,7 +107,7 @@ describe("Nano / Payday validation", () => {
     });
 
     it("uses the current configuration; earlier versions are retired", () => {
-      expect(pay("400000", "100000").configVersionId).toBe("PAYDAY-1.2");
+      expect(pay("400000", "100000").configVersionId).toBe("PAYDAY-1.3");
     });
   });
 

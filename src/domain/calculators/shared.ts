@@ -164,6 +164,72 @@ export function applyLoanDeductions(
   return true;
 }
 
+/**
+ * Late-payment penalty interest (simple, accrued daily, on the overdue amount only):
+ *   penalty = overdue amount × daily rate × min(days overdue, maxDays)
+ * Adds a "latePenalty" secondary analysis. Returns false (and clears figures) on invalid input.
+ */
+export function applyLatePenalty(ctx: CalcContext, out: StrategyOutput, amountDue: Dec, amountDueLabel: string, r: (v: Dec) => Dec): boolean {
+  const cfg = ctx.config.latePenalty;
+  if (!cfg) return true;
+  const days = ctx.inputs[cfg.daysOverdueField] as number | undefined;
+  const ratePct = ctx.inputs[cfg.rateField] as string | undefined;
+  const entered = ctx.inputs[cfg.overdueAmountField] as string | undefined;
+  if (days === undefined && !ratePct && !entered) return true;
+
+  const fail = (field: string, message: string) => {
+    out.status = "ERROR";
+    out.errorCode = "VALIDATION_FAILED";
+    out.fieldErrors.push({ field, message });
+    // An error must never carry plausible-looking figures.
+    for (const list of [out.summary, out.lineItems, out.steps, out.schedule, out.secondary, out.assumptions]) list.length = 0;
+    return false;
+  };
+  if (days === undefined) return fail(cfg.daysOverdueField, "Enter the days overdue to calculate the late-payment penalty.");
+  if (!ratePct) return fail(cfg.rateField, "Enter the daily penalty rate from the Admin Portal.");
+
+  const overdue = entered ? dec(entered) : amountDue;
+  const charged = Math.min(days, cfg.maxDays);
+  const dailyPenalty = overdue.times(ratePct).dividedBy(100);
+  const penalty = r(dailyPenalty.times(charged));
+  const totalDue = r(overdue.plus(penalty));
+  const capped = days > cfg.maxDays;
+
+  out.secondary.push({
+    key: "latePenalty",
+    title: "Late payment penalty",
+    status: "CALCULATED",
+    ruleStatus: "CONFIRMED",
+    message: `Penalty interest is simple and accrued daily on the overdue amount only, for at most ${cfg.maxDays} days. Email communications take priority over this rule.`,
+    summary: [
+      { key: "overdueAmount", label: entered ? "Overdue amount" : `Overdue amount (${amountDueLabel})`, value: m(overdue), kind: "money" },
+      { key: "penaltyRate", label: "Penalty rate", value: `${ratePct}% per day`, kind: "text" },
+      { key: "daysOverdue", label: "Days overdue", value: `${days} days`, kind: "text" },
+      { key: "daysCharged", label: "Days charged", value: capped ? `${charged} days (${cfg.maxDays}-day cap)` : `${charged} days`, kind: "text" },
+      { key: "dailyPenalty", label: "Daily penalty interest", value: m(dailyPenalty), kind: "money" },
+      { key: "penalty", label: "Penalty interest", value: m(penalty), kind: "money" },
+      { key: "totalDue", label: "Total now due (overdue + penalty)", value: m(totalDue), kind: "money", emphasis: true },
+    ],
+    steps: [
+      { label: "Daily penalty interest", expression: `${m(overdue)} × ${ratePct}%`, result: m(dailyPenalty) },
+      { label: "Days charged", expression: `min(${days}, ${cfg.maxDays})`, result: `${charged}` },
+      { label: "Penalty interest", expression: `${m(overdue)} × ${ratePct}% × ${charged}`, result: m(penalty) },
+      { label: "Total now due", expression: `${m(overdue)} + ${m(penalty)}`, result: m(totalDue) },
+    ],
+    lineItems: [
+      { sequence: 1, label: "Overdue amount", amount: m(overdue), type: "INSTALLMENT", explanation: entered ? "Entered for this calculation." : `Defaults to the ${amountDueLabel}.` },
+      { sequence: 2, label: "Penalty interest", amount: m(penalty), type: "PENALTY", explanation: `${ratePct}% per day for ${charged} day${charged === 1 ? "" : "s"}; not charged on earlier penalty.` },
+      { sequence: 3, label: "Total now due", amount: m(totalDue), type: "PAYOUT", explanation: "Overdue amount + penalty interest." },
+    ],
+  });
+  out.warnings.push({
+    code: "PENALTY_RATE_ENTERED",
+    severity: "INFO",
+    message: "The penalty rate was entered for this calculation; confirm it matches the RFS Admin Portal configuration.",
+  });
+  return true;
+}
+
 export function dueDateWarning(code: string, label: string, iso: string): CalculationWarning | null {
   if (!isWeekend(iso)) return null;
   return {

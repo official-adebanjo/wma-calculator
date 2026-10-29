@@ -2,6 +2,7 @@ import { addDays } from "../dates";
 import { componentRounder, D, dec, type Dec, formatNgn, percentOf } from "../money";
 import type { SecondaryAnalysis } from "../types";
 import {
+  applyLatePenalty,
   applyLoanDeductions,
   type CalculatorStrategy,
   dueDateWarning,
@@ -78,6 +79,7 @@ export const dailyProratedLoan: CalculatorStrategy = (ctx) => {
   ];
 
   if (!applyLoanDeductions(ctx, out, principal, interest, total, r)) return out;
+  if (!applyLatePenalty(ctx, out, total, "total repayable at maturity", r)) return out;
 
   if (cap && eligibility) {
     const { income, incomeLimit, eligibleMax } = eligibility;
@@ -113,7 +115,7 @@ export const dailyProratedLoan: CalculatorStrategy = (ctx) => {
 
   out.assumptions.push(
     "Simple interest on the full principal for the selected number of days.",
-    "No fees, insurance or penalties are included; none are approved for this calculator.",
+    "No insurance is included. A late-payment penalty is calculated only when days overdue and a penalty rate are entered.",
     roundingAssumption(ctx.rounding),
   );
   if (startDate) out.assumptions.push("Due date = disbursement date + tenor days (calendar).");

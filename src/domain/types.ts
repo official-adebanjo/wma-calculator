@@ -192,6 +192,11 @@ export interface ProductConfigVersion {
     managementFee: { field: string; basis: "PRINCIPAL" };
     withholdingTax: { field: string; basis: "INTEREST" };
   };
+  /**
+   * Late-payment penalty interest: simple, accrued daily on the overdue amount at a
+   * daily rate entered per calculation, for at most maxDays. Values are input field names.
+   */
+  latePenalty?: { rateField: string; daysOverdueField: string; overdueAmountField: string; maxDays: number };
   /** Rate entered per calculation (percent field name) instead of a configured rate. */
   rateInputField?: string;
   /**

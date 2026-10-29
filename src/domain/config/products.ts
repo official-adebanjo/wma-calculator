@@ -690,6 +690,55 @@ const publicSectorV1: ProductConfigVersion = {
   ...SEED_META,
 };
 
+// 2026-10-29: late-payment penalty interest on all loans — simple, accrued daily
+// on the overdue amount only, at a rate entered per calculation, for at most 7 days.
+const LATE_PENALTY: NonNullable<ProductConfigVersion["latePenalty"]> = {
+  rateField: "penaltyRatePercentPerDay",
+  daysOverdueField: "daysOverdue",
+  overdueAmountField: "overdueAmount",
+  maxDays: 7,
+};
+
+const LATE_PENALTY_FIELDS: InputFieldDef[] = [
+  { kind: "integer", name: "daysOverdue", label: "Late payment: days overdue", required: false, min: 1, max: 365, unit: "days", help: "Optional. Days after the due date that the amount is still unpaid." },
+  { kind: "percent", name: "penaltyRatePercentPerDay", label: "Late payment: penalty rate (% per day)", required: false, max: "100", help: "Optional. Daily penalty interest rate from the Admin Portal." },
+  { kind: "money", name: "overdueAmount", label: "Late payment: overdue amount (₦)", required: false, min: "0.01", help: "Optional. Defaults to the amount due (the repayment, or the first installment)." },
+];
+
+function withLatePenalty(prev: ProductConfigVersion, version: string, formulaVersion: string): [ProductConfigVersion, ProductConfigVersion] {
+  const effective = "2026-10-28";
+  return [
+    { ...prev, status: "RETIRED", effectiveTo: effective },
+    {
+      ...prev,
+      id: `${prev.productCode}-${version}`,
+      version,
+      status: "ACTIVE",
+      effectiveFrom: effective,
+      effectiveTo: null,
+      latePenalty: LATE_PENALTY,
+      formulaVersion,
+      ruleNotes: [
+        ...prev.ruleNotes.filter((n) => n.id !== "PUB-R9"),
+        ...(prev.productCode === "PUBLIC_SECTOR"
+          ? [{ id: "PUB-R9", status: "OPEN" as const, note: "Early liquidation penalty is not calculated until a formula is confirmed (late-payment penalty: see LATE-R1)." }]
+          : []),
+        {
+          id: "LATE-R1",
+          status: "CONFIRMED",
+          note: "Late-payment penalty interest is simple and accrued daily on the overdue amount only: overdue amount × daily penalty rate × days overdue, capped at 7 days. The rate is set on the Admin Portal and entered per calculation. Email communications take priority over this rule.",
+        },
+      ],
+      sources: [...prev.sources, { document: "RFS product rule (QA request)", section: "Late-payment penalty — 2026-10-29" }],
+    },
+  ];
+}
+
+const [nanoV1_1Retired, nanoV1_2] = withLatePenalty(nanoV1_1, "1.2", "NANO-F3");
+const [paydayV1_2Retired, paydayV1_3] = withLatePenalty(paydayV1_2, "1.3", "PAYDAY-F4");
+const [personalV1_2Retired, personalV1_3] = withLatePenalty(personalV1_2, "1.3", "PERSONAL-F4");
+const [publicSectorV1Retired, publicSectorV1_1] = withLatePenalty(publicSectorV1, "1.1", "PUBLIC-F2");
+
 export const PRODUCTS: ProductDefinition[] = [
   {
     code: "NANO",
@@ -701,9 +750,10 @@ export const PRODUCTS: ProductDefinition[] = [
       { kind: "money", name: "principal", label: "Principal amount (₦)", required: true, min: "5000.00", max: "50000.00" },
       { kind: "integer", name: "tenorDays", label: "Tenor", required: true, min: 1, max: 30, unit: "days" },
       ...LOAN_DEDUCTION_FIELDS,
+      ...LATE_PENALTY_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display the due date." },
     ],
-    versions: [nanoV1Retired, nanoV1_1],
+    versions: [nanoV1Retired, nanoV1_1Retired, nanoV1_2],
   },
   {
     code: "PAYDAY",
@@ -723,6 +773,7 @@ export const PRODUCTS: ProductDefinition[] = [
       { kind: "money", name: "principal", label: "Principal amount (₦)", required: true, min: "0.01", max: "500000.00" },
       { kind: "integer", name: "tenorDays", label: "Tenor", required: true, min: 7, max: 30, unit: "days" },
       ...LOAN_DEDUCTION_FIELDS,
+      ...LATE_PENALTY_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display the due date." },
       {
         kind: "integer",
@@ -735,7 +786,7 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional, provisional. Must not exceed the tenor.",
       },
     ],
-    versions: [paydayV1Retired, paydayV1_1Retired, paydayV1_2],
+    versions: [paydayV1Retired, paydayV1_1Retired, paydayV1_2Retired, paydayV1_3],
   },
   {
     code: "PERSONAL",
@@ -757,6 +808,7 @@ export const PRODUCTS: ProductDefinition[] = [
         ],
       },
       ...LOAN_DEDUCTION_FIELDS,
+      ...LATE_PENALTY_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display installment due dates." },
       {
         kind: "integer",
@@ -768,7 +820,7 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional, provisional. Number of installments already paid.",
       },
     ],
-    versions: [personalV1Retired, personalV1_1Retired, personalV1_2],
+    versions: [personalV1Retired, personalV1_1Retired, personalV1_2Retired, personalV1_3],
   },
   {
     code: "PUBLIC_SECTOR",
@@ -800,6 +852,7 @@ export const PRODUCTS: ProductDefinition[] = [
       },
       { kind: "percent", name: "monthlyRatePercent", label: "Monthly interest rate", required: true, min: "0.0001", max: "100", help: "% per month, as configured for the corridor (e.g. 4)." },
       ...LOAN_DEDUCTION_FIELDS,
+      ...LATE_PENALTY_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display installment due dates." },
       {
         kind: "integer",
@@ -811,7 +864,7 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional, provisional. Number of installments already paid. No penalty applied.",
       },
     ],
-    versions: [publicSectorDraftRetired, publicSectorV1],
+    versions: [publicSectorDraftRetired, publicSectorV1Retired, publicSectorV1_1],
   },
   {
     code: "RTN",

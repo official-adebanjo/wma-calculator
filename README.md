@@ -15,7 +15,7 @@ It calculates estimates with a full, reproducible breakdown. It never creates lo
 | Nano Loan | Active | 0.30%/day simple interest (spec's worked-example rate, flagged as illustrative) |
 | Payday Loan | Active | Principal capped at 50% of registered monthly income (and ₦500,000). Early-settlement preview is **provisional** |
 | Personal Loan | Active | Repayment plan: equal monthly or declining (reducing balance). Early-settlement preview is **provisional** |
-| All loans | — | Optional management fee (% of principal) and withholding tax (% of interest), deducted from the amount disbursed |
+| All loans | — | Optional management fee (% of principal) and withholding tax (% of interest), deducted from the amount disbursed. Optional late-payment penalty: simple interest accrued daily on the overdue amount at an entered daily rate, capped at 7 days (email communications take priority) |
 | RTN — Rosabon Treasury Note | Active | Approved rules (RTN-1.3): at maturity and upfront confirmed (OPEN-9 resolved: ₦34,682.41), full-precision rounding, early and partial withdrawal (penalty 100/80/60/40/0% of the rate by tenor elapsed), top-up, rollover, payment/notice dates, and upfront early withdrawal (payout = booked principal + 0.90 × (interest accrued on booked principal − penal charge)) |
 | RWIN — Rosabon Wealth Investment Note | Active | Open-ended plan (RWIN-1.0): flat 14% p.a. on any amount from ₦50,000, simple interest accruing daily (balance × 14% ÷ 365), paid out or reinvested every 90 days from the start date, top-ups merge into the balance, first 30 days locked. WHT (10% assumed) and withdrawal rules still open |
 | REAP — Rosabon Easy Access Plan | Validation only | No approved rate table, so no projection is ever shown. Records target amount/date |
