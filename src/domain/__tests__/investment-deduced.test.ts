@@ -69,11 +69,12 @@ describe("REAP and RWIN — deduced rules document", () => {
     expect(run("REAP", { principal: "9999.99", planType: "OPEN" }).status).toBe("ERROR");
   });
 
-  it("RWIN is the Rosabon Wealth Investment Note; ₦50,000 minimum with the ₦20,000 conflict recorded", () => {
-    const r = run("RWIN", { principal: "50000" });
+  it("RWIN is the Rosabon Wealth Investment Note; ₦50,000 minimum confirmed (₦20,000 superseded)", () => {
+    const r = run("RWIN", { principal: "50000", daysHeld: 90, interestOption: "PAY_OUT" });
     expect(r.productName).toBe("RWIN — Rosabon Wealth Investment Note");
-    expect(r.status).toBe("VALIDATION_ONLY");
-    expect(r.warnings.find((w) => w.code === "RWIN-R1")?.message).toContain("₦20,000");
-    expect(run("RWIN", { principal: "49999.99" }).status).toBe("ERROR");
+    expect(r.status).toBe("CALCULATED");
+    const v = getProduct("RWIN")!.versions.find((x) => x.status === "ACTIVE")!;
+    expect(v.ruleNotes.find((n) => n.id === "RWIN-R1")).toMatchObject({ status: "CONFIRMED" });
+    expect(run("RWIN", { principal: "49999.99", daysHeld: 90, interestOption: "PAY_OUT" }).status).toBe("ERROR");
   });
 });

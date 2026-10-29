@@ -34,7 +34,7 @@ export function resultToCsv(r: CalculationResult, scenarioName?: string): string
     out.push([
       "schedule",
       `${row.period}`,
-      `Period ${row.period}${row.dueDate ? ` (${row.dueDate})` : ""}`,
+      `${r.scheduleLabels?.period ?? "Period"} ${row.period}${row.dueDate ? ` (${row.dueDate})` : ""}`,
       row.installment,
       `opening=${row.openingBalance}; principal=${row.principal}; interest=${row.interest}; closing=${row.closingBalance}`,
     ]);

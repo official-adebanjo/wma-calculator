@@ -128,11 +128,13 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RW-001",
     productCode: "RWIN",
-    configVersionId: "RWIN-0.2",
-    inputs: { principal: "50000" },
-    expectedStatus: "VALIDATION_ONLY",
-    source: "QA matrix RW-001",
-    approval: "Validation only",
+    configVersionId: "RWIN-1.0",
+    inputs: { principal: "1000000", daysHeld: 90, interestOption: "PAY_OUT" },
+    expectedStatus: "CALCULATED",
+    // 1,000,000 × 14% × 90 ÷ 365 = 34,520.547945 → 34,520.55 paid; WHT 10% = 3,452.055 → 3,452.06; net 31,068.49
+    expectedSummary: { grossInterest: "34520.55", tax: "3452.06", netInterest: "31068.49", balance: "1000000.00", position: "1000000.00" },
+    source: "RFS RWIN approved answers A–B (14% p.a., daily simple interest, 90-day payouts)",
+    approval: "Approved rules; WHT treatment to confirm",
   },
   {
     id: "LN-PUB-001",

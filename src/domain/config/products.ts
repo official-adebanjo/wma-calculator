@@ -617,6 +617,37 @@ const rwinV0_2: ProductConfigVersion = {
   sources: [...rwinV1.sources, DEDUCED_SOURCE("4. RWIN — Rosabon Wealth Investment Note")],
 };
 
+// 2026-10-29: RFS approved RWIN answers (A. eligibility and setup, B. interest and payouts).
+const rwinV0_2Retired: ProductConfigVersion = { ...rwinV0_2, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
+const rwinV1_0: ProductConfigVersion = {
+  ...rwinV0_2,
+  id: "RWIN-1.0",
+  version: "1.0",
+  effectiveFrom: INVEST_EFFECTIVE,
+  effectiveTo: null,
+  minimumPrincipal: "50000.00",
+  maximumPrincipal: null,
+  rateModel: "ANNUAL",
+  interestModel: "DAILY_PRORATED",
+  ratePercent: "14",
+  rateProvenance: "APPROVED",
+  tax: { withholdingTaxPercent: "10" },
+  rwin: { dayCountBasis: 365, payoutCycleDays: 90, lockDays: 30 },
+  formulaVersion: "RWIN-F1",
+  ruleNotes: [
+    { id: "RWIN-R1", status: "CONFIRMED", note: "Minimum ₦50,000 (the earlier ₦20,000 reference is superseded); no maximum." },
+    { id: "RWIN-R2", status: "CONFIRMED", note: "Flat 14% p.a. on every amount; no rate table and no amount tiers. Management/Product Owner approves rate changes, which may apply to new plans, existing plans, or both." },
+    { id: "RWIN-R4", status: "CONFIRMED", note: "No fixed tenor or maturity date: the plan runs from the start date until full withdrawal. The first 30 days of every RWIN investment are locked." },
+    { id: "RWIN-R5", status: "CONFIRMED", note: "Simple interest accruing daily: end-of-day balance × 14% ÷ 365, on a fixed 365-day basis (also in leap years)." },
+    { id: "RWIN-R6", status: "CONFIRMED", note: "Interest is paid every 90 days from the start date (start + 90, then every 90 days). It compounds only if the customer reinvests it at a payout." },
+    { id: "RWIN-R8", status: "CONFIRMED", note: "Top-ups merge into the plan's single balance at the same rate, with no minimum. A separate placement needs a new RWIN plan." },
+    { id: "RWIN-R7", status: "OPEN", note: "WHT on RWIN interest is not stated; 10% is deducted from each payment (as for RTN) and the net amount is reinvested. Confirm." },
+    { id: "RWIN-R9", status: "OPEN", note: "Withdrawal after the lock (partial or full), the treatment of interest accrued since the last payout, and any penalty are not yet specified." },
+    { id: "RWIN-R3", status: "CONFIRMED", note: "RTN rates and formulas must not be reused for RWIN." },
+  ],
+  sources: [...rwinV0_2.sources, { document: "RFS RWIN product decisions (approved answers)", section: "A–B, 2026-10-29" }],
+};
+
 const publicSectorV1: ProductConfigVersion = {
   id: "PUBLIC_SECTOR-1.0",
   productCode: "PUBLIC_SECTOR",
@@ -883,14 +914,26 @@ export const PRODUCTS: ProductDefinition[] = [
     code: "RWIN",
     name: "RWIN — Rosabon Wealth Investment Note",
     category: "INVESTMENT",
-    status: "VALIDATION_ONLY",
-    statusReason: "Approved RWIN rate table, cycle length and return formula are missing (OPEN-RWIN-01). Inputs are validated; no return is projected.",
-    description: "Cycle-based investment. Validation only until rates and rules are approved.",
+    status: "ACTIVE",
+    description: "Open-ended plan at a flat 14% p.a., simple interest accruing daily, paid or reinvested every 90 days. First 30 days locked.",
     fields: [
-      { kind: "money", name: "principal", label: "Amount (₦)", required: true, min: "50000.00" },
-      { kind: "integer", name: "cycleDays", label: "Cycle (unconfirmed options)", required: false, min: 1, max: 3650, unit: "days" },
+      { kind: "money", name: "principal", label: "Amount (₦)", required: true, min: "50000.00", help: "Minimum ₦50,000; no maximum." },
+      { kind: "integer", name: "daysHeld", label: "Projection: days held", required: true, min: 1, max: 3650, unit: "days", help: "No maturity date: project the plan to any day after the start date." },
+      {
+        kind: "select",
+        name: "interestOption",
+        label: "90-day interest",
+        required: true,
+        options: [
+          { value: "PAY_OUT", label: "Pay out" },
+          { value: "REINVEST", label: "Reinvest (compound)" },
+        ],
+      },
+      { kind: "date", name: "valueDate", label: "Start date", required: false, help: "Optional. Used for payout dates and the end of the 30-day lock." },
+      { kind: "money", name: "topUpAmount", label: "Top-up: amount (₦)", required: false, min: "0.01", help: "Optional. No minimum; merges into the balance at the same rate." },
+      { kind: "integer", name: "topUpDay", label: "Top-up: on day", required: false, min: 1, max: 3649, unit: "days", help: "Days after the start date when the top-up lands." },
     ],
-    versions: [rwinV1Retired, rwinV0_2],
+    versions: [rwinV1Retired, rwinV0_2Retired, rwinV1_0],
   },
 ];
 

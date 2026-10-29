@@ -152,24 +152,25 @@ function LineItemsTable({ items }: { items: CalculationResult["lineItems"] }) {
   );
 }
 
-function ScheduleTable({ rows }: { rows: CalculationResult["schedule"] }) {
+function ScheduleTable({ rows, labels = {} }: { rows: CalculationResult["schedule"]; labels?: CalculationResult["scheduleLabels"] }) {
+  const l = { period: "Period", dueDate: "Due date", principal: "Principal", interest: "Interest", installment: "Installment", ...labels };
   const hasDates = rows.some((r) => r.dueDate);
   return (
     <>
-      <ol className="space-y-2 md:hidden" aria-label="Repayment schedule">
+      <ol className="space-y-2 md:hidden" aria-label="Schedule">
         {rows.map((r) => (
           <li key={r.period} className="rounded-md border px-3 py-2.5 text-sm tabular-nums">
             <div className="flex items-baseline justify-between gap-3">
               <span className="font-medium">
-                Installment {r.period}
-                {r.dueDate && <span className="block text-xs font-normal whitespace-nowrap text-muted-foreground">due {r.dueDate}</span>}
+                {l.period === "Period" ? "Installment" : l.period} {r.period}
+                {r.dueDate && <span className="block text-xs font-normal whitespace-nowrap text-muted-foreground">{l.dueDate === "Due date" ? "due" : l.dueDate.toLowerCase()} {r.dueDate}</span>}
               </span>
               <span className="text-base font-semibold">{formatMoneyMaybe(r.installment)}</span>
             </div>
             <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-              <dt>Principal</dt>
+              <dt>{l.principal}</dt>
               <dd className="text-right text-foreground">{formatMoneyMaybe(r.principal)}</dd>
-              <dt>Interest</dt>
+              <dt>{l.interest}</dt>
               <dd className="text-right text-foreground">{formatMoneyMaybe(r.interest)}</dd>
               <dt>Opening balance</dt>
               <dd className="text-right">{formatMoneyMaybe(r.openingBalance)}</dd>
@@ -183,12 +184,12 @@ function ScheduleTable({ rows }: { rows: CalculationResult["schedule"] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Period</TableHead>
-          {hasDates && <TableHead>Due date</TableHead>}
+          <TableHead>{l.period}</TableHead>
+          {hasDates && <TableHead>{l.dueDate}</TableHead>}
           <TableHead className="text-right">Opening</TableHead>
-          <TableHead className="text-right">Principal</TableHead>
-          <TableHead className="text-right">Interest</TableHead>
-          <TableHead className="text-right">Installment</TableHead>
+          <TableHead className="text-right">{l.principal}</TableHead>
+          <TableHead className="text-right">{l.interest}</TableHead>
+          <TableHead className="text-right">{l.installment}</TableHead>
           <TableHead className="text-right">Closing</TableHead>
         </TableRow>
       </TableHeader>
@@ -307,7 +308,7 @@ export function ResultView({ result }: { result: CalculationResult }) {
               </TabsContent>
               {result.schedule.length > 0 && (
                 <TabsContent value="schedule" className="overflow-x-auto">
-                  <ScheduleTable rows={result.schedule} />
+                  <ScheduleTable rows={result.schedule} labels={result.scheduleLabels} />
                 </TabsContent>
               )}
             </Tabs>

@@ -1,6 +1,7 @@
 import { dailyProratedLoan } from "./calculators/daily";
 import { personalLoan } from "./calculators/personal";
 import { rtn } from "./calculators/rtn";
+import { rwin } from "./calculators/rwin";
 import type { CalculatorStrategy } from "./calculators/shared";
 import { validationOnly } from "./calculators/validation-only";
 import { getProduct } from "./config/products";
@@ -16,7 +17,7 @@ const STRATEGIES: Record<string, CalculatorStrategy> = {
   PUBLIC_SECTOR: personalLoan,
   RTN: rtn,
   REAP: validationOnly,
-  RWIN: validationOnly,
+  RWIN: rwin,
 };
 
 export interface CalculateOptions {

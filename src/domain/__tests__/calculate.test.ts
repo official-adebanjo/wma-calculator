@@ -221,11 +221,8 @@ describe("RTN", () => {
 });
 
 describe("status gates and invariants", () => {
-  it("REAP/RWIN never return a projection, even with a QA rate override", () => {
-    for (const [code, inputs] of [
-      ["REAP", { principal: "500000", planType: "OPEN", tenorMonths: 12 }],
-      ["RWIN", { principal: "600000", cycleDays: 90 }],
-    ] as const) {
+  it("REAP never returns a projection, even with a QA rate override", () => {
+    for (const [code, inputs] of [["REAP", { principal: "500000", planType: "OPEN", tenorMonths: 12 }]] as const) {
       const r = run(code, inputs, { rateOverridePercent: "30" });
       expect(r.status).toBe("VALIDATION_ONLY");
       expect(r.lineItems).toEqual([]);

@@ -17,7 +17,8 @@ It calculates estimates with a full, reproducible breakdown. It never creates lo
 | Personal Loan | Active | Repayment plan: equal monthly or declining (reducing balance). Early-settlement preview is **provisional** |
 | All loans | — | Optional management fee (% of principal) and withholding tax (% of interest), deducted from the amount disbursed |
 | RTN — Rosabon Treasury Note | Active | Approved rules (RTN-1.3): at maturity and upfront confirmed (OPEN-9 resolved: ₦34,682.41), full-precision rounding, early and partial withdrawal (penalty 100/80/60/40/0% of the rate by tenor elapsed), top-up, rollover, payment/notice dates, and upfront early withdrawal (payout = booked principal + 0.90 × (interest accrued on booked principal − penal charge)) |
-| REAP — Rosabon Easy Access Plan / RWIN — Rosabon Wealth Investment Note | Validation only | No approved rate table, so no projection is ever shown. REAP records target amount/date; RWIN ₦50,000 minimum pending confirmation (₦20,000 conflict) |
+| RWIN — Rosabon Wealth Investment Note | Active | Open-ended plan (RWIN-1.0): flat 14% p.a. on any amount from ₦50,000, simple interest accruing daily (balance × 14% ÷ 365), paid out or reinvested every 90 days from the start date, top-ups merge into the balance, first 30 days locked. WHT (10% assumed) and withdrawal rules still open |
+| REAP — Rosabon Easy Access Plan | Validation only | No approved rate table, so no projection is ever shown. Records target amount/date |
 | Public Sector Loan | Active | Same calculation as Personal Loan (equal monthly or declining) with an entered corridor rate; pre-eligibility: net salary ≥ corridor minimum net salary. No penalty fee until a formula is confirmed |
 
 Open rules from the QA matrix (OPEN-RTN-01…07, OPEN-LOAN-01…05, etc.) are shown in the UI next to each product.

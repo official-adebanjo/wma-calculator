@@ -182,6 +182,8 @@ export interface ProductConfigVersion {
   tax?: {
     withholdingTaxPercent: string;
   };
+  /** RWIN open-ended plan: interest paid every payoutCycleDays; the first lockDays are locked. */
+  rwin?: { dayCountBasis: 365; payoutCycleDays: number; lockDays: number };
   /**
    * Up-front loan deductions. Percentages are entered per calculation (they are
    * configured on the RFS Admin Portal); blank means not applied.
@@ -314,6 +316,8 @@ export interface CalculationResult {
   lineItems: LineItem[];
   steps: CalculationStep[];
   schedule: ScheduleRow[];
+  /** Column headings when the schedule is not a repayment schedule (e.g. investment payouts). */
+  scheduleLabels?: Partial<Record<"period" | "dueDate" | "principal" | "interest" | "installment", string>>;
   secondary: SecondaryAnalysis[];
   formula: string | null;
   assumptions: string[];

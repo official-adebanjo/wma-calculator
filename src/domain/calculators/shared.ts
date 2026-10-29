@@ -20,7 +20,7 @@ export interface CalcContext {
 /** The part of a result a strategy is responsible for. */
 export type StrategyOutput = Pick<
   CalculationResult,
-  "status" | "summary" | "lineItems" | "steps" | "schedule" | "secondary" | "formula" | "assumptions" | "warnings" | "fieldErrors"
+  "status" | "summary" | "lineItems" | "steps" | "schedule" | "scheduleLabels" | "secondary" | "formula" | "assumptions" | "warnings" | "fieldErrors"
 > & {
   errorCode?: string;
   message?: string;
