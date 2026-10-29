@@ -89,7 +89,7 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RTN-CAL-001",
     productCode: "RTN",
-    configVersionId: "RTN-1.2",
+    configVersionId: "RTN-1.3",
     inputs: { investorType: "INDIVIDUAL", principal: "1000000", tenorDays: "90", payoutOption: "MATURITY" },
     expectedStatus: "CALCULATED",
     expectedSummary: { grossInterest: "46232.88", tax: "4623.29", netInterest: "41609.59", maturityPayout: "1041609.59" },
@@ -99,7 +99,7 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RTN-EXIT-001",
     productCode: "RTN",
-    configVersionId: "RTN-1.2",
+    configVersionId: "RTN-1.3",
     inputs: { investorType: "INDIVIDUAL", principal: "1000000", tenorDays: "90", payoutOption: "MATURITY", daysElapsed: 30 },
     expectedStatus: "CALCULATED",
     // 30/90 = 33.33% elapsed → 80% of 18.75% = 15% p.a. penalty rate.

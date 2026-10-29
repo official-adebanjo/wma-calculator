@@ -205,7 +205,14 @@ export const rtn: CalculatorStrategy = (ctx) => {
     ];
     out.assumptions.push("Upfront interest is net interest on the booked principal; 10% WHT is taken before payment (built into the divisor).");
 
-    const unsupported = (["daysElapsed", "topUpAmount", "rolloverTenorDays"] as const).find((k) => ctx.inputs[k] !== undefined);
+    if (ctx.inputs.daysElapsed !== undefined && ctx.config.features.upfrontEarlyWithdrawal?.enabled) {
+      const res = upfrontEarlyWithdrawal(ctx.config, ctx.inputs, { cfg, principal, tenor, annualRate, ratePercent, whtRate, whtPercent, basis, r, minimum, maturity, band }, booked, upfront);
+      if ("error" in res) return fieldError(out, res.error.field, res.error.message);
+      out.secondary.push(res.analysis);
+      out.warnings.push(...res.warnings);
+    }
+
+    const unsupported = (["daysElapsed", "topUpAmount", "rolloverTenorDays"] as const).find((k) => ctx.inputs[k] !== undefined && !(k === "daysElapsed" && ctx.config.features.upfrontEarlyWithdrawal?.enabled));
     if (unsupported) {
       out.secondary.push({
         key: unsupported === "daysElapsed" ? "earlyWithdrawal" : unsupported === "topUpAmount" ? "topUp" : "rollover",
@@ -361,6 +368,84 @@ function earlyWithdrawal(
     }
   }
   return { analyses, warnings: [] };
+}
+
+/**
+ * Early withdrawal of an upfront placement (RTN-R13). Here e.principal is the funded amount.
+ * payout = booked principal + 0.90 × (interest accrued on booked principal − penal charge)
+ */
+function upfrontEarlyWithdrawal(
+  config: ProductConfigVersion,
+  inputs: Record<string, unknown>,
+  e: EventContext,
+  booked: Dec,
+  upfrontPaid: Dec,
+): EventError | { analysis: SecondaryAnalysis; warnings: CalculationWarning[] } {
+  const days = inputs.daysElapsed as number;
+  const feature = config.features.upfrontEarlyWithdrawal!;
+  if (days >= e.tenor) return { error: { field: "daysElapsed", message: `Must be before maturity (day ${e.tenor}); at maturity the booked principal is repaid.` } };
+  if (inputs.withdrawalAmount !== undefined) {
+    return { error: { field: "withdrawalAmount", message: "Partial withdrawal is only specified for at-maturity placements. Leave blank to withdraw the whole upfront placement." } };
+  }
+
+  const { sharePercent, bandLabel: penaltyBand } = penaltyShare(e.cfg, days, e.tenor);
+  const penaltyRate = dec(sharePercent).dividedBy(100).times(e.annualRate);
+  const elapsedShare = `${dec(days).dividedBy(e.tenor).times(100).toDecimalPlaces(2).toString()}%`;
+  const accrued = e.r(booked.times(e.annualRate).times(days).dividedBy(e.basis));
+  const penalty = e.r(dec(days).dividedBy(e.basis).times(penaltyRate).times(booked));
+  const taxable = e.r(accrued.minus(penalty));
+  const wht = e.r(taxable.times(e.whtRate));
+  const net = e.r(taxable.minus(wht));
+  const payout = e.r(booked.plus(net));
+  const unearned = e.r(upfrontPaid.minus(net));
+  const netFactor = dec(1).minus(e.whtRate);
+
+  return {
+    warnings: [
+      {
+        code: "UPFRONT_EXIT_UPFRONT_NOT_DEDUCTED",
+        severity: "WARNING",
+        message: `The approved formula does not deduct the ${naira(upfrontPaid)} upfront interest already paid at placement; of that, ${naira(unearned)} was not earned by day ${days}. Confirm whether it should be recovered from the payout.`,
+      },
+    ],
+    analysis: {
+      key: "earlyWithdrawal",
+      title: "Early withdrawal (upfront placement)",
+      status: "CALCULATED",
+      ruleStatus: feature.ruleStatus,
+      message: feature.note,
+      summary: [
+        { key: "elapsedDays", label: "Days elapsed", value: `${days} of ${e.tenor}`, kind: "text" },
+        { key: "elapsedShare", label: "Tenor elapsed", value: elapsedShare, kind: "text" },
+        { key: "bookedPrincipal", label: "Booked principal", value: m(booked), kind: "money" },
+        { key: "penaltyRate", label: "Penalty rate", value: `${sharePercent}% of ${pct(e.ratePercent)} = ${pct(penaltyRate.times(100))} p.a. (${penaltyBand})`, kind: "text" },
+        { key: "grossInterest", label: "Interest accrued (on booked principal)", value: m(accrued), kind: "money" },
+        { key: "penalty", label: "Penal charge", value: m(penalty), kind: "money" },
+        { key: "taxable", label: "Interest after penalty", value: m(taxable), kind: "money" },
+        { key: "tax", label: `WHT (${e.whtPercent}%)`, value: m(wht), kind: "money" },
+        { key: "netInterest", label: "Net interest earned", value: m(net), kind: "money" },
+        { key: "upfrontPaid", label: "Upfront interest already paid", value: m(upfrontPaid), kind: "money" },
+        { key: "unearnedUpfront", label: "Upfront interest not yet earned", value: m(unearned), kind: "money" },
+        { key: "payout", label: "Withdrawal payout", value: m(payout), kind: "money", emphasis: true },
+      ],
+      steps: [
+        { label: "Tenor elapsed", expression: `${days} ÷ ${e.tenor} × 100`, result: elapsedShare },
+        { label: "Penalty rate", expression: `${sharePercent}% × ${pct(e.ratePercent)}`, result: `${pct(penaltyRate.times(100))} p.a.` },
+        { label: "Interest accrued", expression: `${m(booked)} × ${e.annualRate} × ${days} ÷ ${e.basis}`, result: m(accrued) },
+        { label: "Penal charge", expression: `${days} ÷ ${e.basis} × ${penaltyRate.toDecimalPlaces(8)} × ${m(booked)}`, result: m(penalty) },
+        { label: "Net interest earned", expression: `${netFactor} × (${m(accrued)} − ${m(penalty)})`, result: m(net) },
+        { label: "Payout", expression: `${m(booked)} + ${m(net)}`, result: m(payout) },
+        { label: "Upfront interest not yet earned", expression: `${m(upfrontPaid)} − ${m(net)}`, result: m(unearned) },
+      ],
+      lineItems: [
+        { sequence: 1, label: "Booked principal", amount: m(booked), type: "PRINCIPAL", explanation: "Funded amount ÷ divisor; returned in full." },
+        { sequence: 2, label: "Interest accrued", amount: m(accrued), type: "INTEREST", explanation: `${days} days at the upfront rate on the booked principal.` },
+        { sequence: 3, label: "Penal charge", amount: m(penalty), type: "PENALTY", explanation: `${sharePercent}% of the placement rate for ${days} days, taken from accrued interest.` },
+        { sequence: 4, label: "WHT", amount: m(wht), type: "TAX", explanation: `${e.whtPercent}% of interest after the penalty.` },
+        { sequence: 5, label: "Payout", amount: m(payout), type: "PAYOUT", explanation: "Booked principal + net interest earned." },
+      ],
+    },
+  };
 }
 
 function topUp(config: ProductConfigVersion, inputs: Record<string, unknown>, e: EventContext): EventError | { analysis: SecondaryAnalysis; warnings: CalculationWarning[] } {

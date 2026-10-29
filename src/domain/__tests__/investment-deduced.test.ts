@@ -46,11 +46,11 @@ describe("RTN — deduced rules document", () => {
     expect(summary(r)).toMatchObject({ netInterest: "34682.41", bookedPrincipal: "965317.59" });
   });
 
-  it("RTN-1.1 is retired; its open points are recorded as decided in RTN-1.2", () => {
+  it("RTN-1.1 is retired; its open points are recorded as decided in RTN-1.2+", () => {
     const versions = getProduct("RTN")!.versions;
     expect(versions.find((x) => x.id === "RTN-1.1")?.status).toBe("RETIRED");
     const v = versions.find((x) => x.status === "ACTIVE")!;
-    expect(v.id).toBe("RTN-1.2");
+    expect(v.id).toBe("RTN-1.3");
     for (const id of ["RTN-R7", "RTN-R8", "RTN-R9"]) expect(v.ruleNotes.find((n) => n.id === id)?.status).toBe("CONFIRMED");
   });
 });

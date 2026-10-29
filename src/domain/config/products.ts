@@ -555,6 +555,37 @@ const rtnV1_2: ProductConfigVersion = {
   sources: [...rtnV1_1.sources, RTN_DECISIONS],
 };
 
+// 2026-10-29: RFS answer to RTN-R13 (early withdrawal of an upfront placement).
+// Effective with the other approved RTN decisions so earlier quotes resolve to the same rules.
+const RTN_UPFRONT_EXIT = INVEST_EFFECTIVE;
+const rtnV1_2Retired: ProductConfigVersion = { ...rtnV1_2, status: "RETIRED", effectiveTo: RTN_UPFRONT_EXIT };
+const rtnV1_3: ProductConfigVersion = {
+  ...rtnV1_2,
+  id: "RTN-1.3",
+  version: "1.3",
+  effectiveFrom: RTN_UPFRONT_EXIT,
+  effectiveTo: null,
+  formulaVersion: "RTN-F4",
+  features: {
+    ...rtnV1_2.features,
+    earlyWithdrawal: {
+      ...rtnV1_2.features.earlyWithdrawal,
+      note: "Penal charge = days elapsed ÷ 365 × penalty rate × amount withdrawn, taken from accrued interest; 10% WHT on the remainder. Penalty rate by tenor elapsed: ≤25% → 100%, >25–50% → 80%, >50–75% → 60%, >75% before maturity → 40%, on/after maturity → 0% (of the placement rate).",
+    },
+    upfrontEarlyWithdrawal: {
+      enabled: true,
+      ruleStatus: "CONFIRMED",
+      note: "Upfront placements are booked at the discounted principal (funded ÷ divisor). On early withdrawal: payout = booked principal + 0.90 × (interest accrued on booked principal − penal charge), with the penal charge on the booked principal at the same penalty schedule. Full withdrawal only.",
+    },
+  },
+  ruleNotes: rtnV1_2.ruleNotes.map((n) =>
+    n.id === "RTN-R13"
+      ? { id: "RTN-R13", status: "CONFIRMED", note: "Upfront early withdrawal: payout = booked principal + 0.90 × (interest accrued on booked principal − penal charge). Booked principal = funded amount ÷ (1 + 0.90 × upfront rate ÷ 365 × tenor)." }
+      : n,
+  ),
+  sources: [...rtnV1_2.sources, { document: "RFS RTN product decisions", section: "Upfront early withdrawal (RTN-R13), 2026-10-29" }],
+};
+
 const reapV1Retired: ProductConfigVersion = { ...reapV1, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
 const reapV0_2: ProductConfigVersion = {
   ...reapV1,
@@ -801,7 +832,7 @@ export const PRODUCTS: ProductDefinition[] = [
         min: 1,
         max: 365,
         unit: "days",
-        help: "Optional. At-maturity placements only. One event per calculation (withdrawal, top-up or rollover).",
+        help: "Optional. At-maturity or upfront placements. One event per calculation (withdrawal, top-up or rollover).",
       },
       {
         kind: "money",
@@ -809,7 +840,7 @@ export const PRODUCTS: ProductDefinition[] = [
         label: "Early withdrawal: amount (₦)",
         required: false,
         min: "0.01",
-        help: "Optional. Leave blank to withdraw everything; a smaller amount is a partial withdrawal.",
+        help: "Optional. Leave blank to withdraw everything; a smaller amount is a partial withdrawal (at-maturity placements only).",
       },
       { kind: "money", name: "topUpAmount", label: "Top-up: amount (₦)", required: false, min: "0.01", help: "Optional. At-maturity placements only." },
       { kind: "integer", name: "topUpDay", label: "Top-up: on day", required: false, min: 1, max: 364, unit: "days", help: "Days after the funds-confirmed date when the top-up lands." },
@@ -822,7 +853,7 @@ export const PRODUCTS: ProductDefinition[] = [
         help: "Optional. Rolls principal + net interest into a new at-maturity placement.",
       },
     ],
-    versions: [rtnV1Retired, rtnV1_1Retired, rtnV1_2],
+    versions: [rtnV1Retired, rtnV1_1Retired, rtnV1_2Retired, rtnV1_3],
   },
   {
     code: "REAP",

@@ -141,10 +141,50 @@ describe("C. Early withdrawal and liquidation", () => {
     expect(run({ principal: "1000000", daysElapsed: 30, withdrawalAmount: "1000000.01" }).fieldErrors[0].field).toBe("withdrawalAmount");
   });
 
-  it("upfront early withdrawal stays blocked (claw-back unanswered)", () => {
-    const w = sec(run({ principal: "1000000", payoutOption: "UPFRONT", daysElapsed: 30 }), "earlyWithdrawal")!;
-    expect(w.status).toBe("BLOCKED");
-    expect(w.message).toContain("claw-back");
+});
+
+describe("Upfront early withdrawal (RTN-R13)", () => {
+  // ₦1,000,000 funded, 90 days, upfront 16.19%; exit on day 30 (33.33% elapsed → 80% penalty share).
+  const rate = dec("0.1619");
+  const booked = dec(1000000).dividedBy(dec(1).plus(dec("0.9").times(rate).times(90).dividedBy(365)));
+  const accrued = booked.times(rate).times(30).dividedBy(365);
+  const penal = dec(30).dividedBy(365).times(rate.times("0.8")).times(booked);
+  const net = dec("0.9").times(accrued.minus(penal));
+
+  it("payout = booked principal + 0.90 × (interest accrued on booked principal − penal charge)", () => {
+    const r = run({ principal: "1000000", payoutOption: "UPFRONT", daysElapsed: 30 });
+    expect(r.configVersionId).toBe("RTN-1.3");
+    const w = sec(r, "earlyWithdrawal")!;
+    expect(w.status).toBe("CALCULATED");
+    expect(w.ruleStatus).toBe("CONFIRMED");
+    expect(w.values).toMatchObject({
+      bookedPrincipal: "965317.59",
+      grossInterest: money(accrued),
+      penalty: money(penal),
+      netInterest: money(net),
+      payout: money(booked.plus(net)),
+      upfrontPaid: "34682.41",
+      unearnedUpfront: money(dec(1000000).minus(booked).minus(net)),
+    });
+    expect(r.warnings.map((x) => x.code)).toContain("UPFRONT_EXIT_UPFRONT_NOT_DEDUCTED");
+  });
+
+  it("uses the 100% penalty band early in the tenor", () => {
+    const w = sec(run({ principal: "1000000", payoutOption: "UPFRONT", daysElapsed: 10 }), "earlyWithdrawal")!;
+    expect(w.values.penaltyRate).toContain("100% of 16.19%");
+    expect(w.values.netInterest).toBe("0.00");
+    expect(w.values.payout).toBe("965317.59");
+  });
+
+  it("is full withdrawal only, before maturity", () => {
+    expect(run({ principal: "1000000", payoutOption: "UPFRONT", daysElapsed: 30, withdrawalAmount: "500000" }).fieldErrors[0].field).toBe("withdrawalAmount");
+    expect(run({ principal: "1000000", payoutOption: "UPFRONT", daysElapsed: 90 }).fieldErrors[0].field).toBe("daysElapsed");
+  });
+
+  it("records RTN-R13 as confirmed and keeps RTN-1.2 retired", () => {
+    const versions = getProduct("RTN")!.versions;
+    expect(versions.find((x) => x.id === "RTN-1.2")?.status).toBe("RETIRED");
+    expect(versions.find((x) => x.status === "ACTIVE")!.ruleNotes.find((n) => n.id === "RTN-R13")?.status).toBe("CONFIRMED");
   });
 });
 
