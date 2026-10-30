@@ -41,12 +41,12 @@ describe("loan product structure", () => {
     const r = run("PERSONAL_PRIVATE", { principal: "6000000", tenorMonths: 6, interestModel: "FLAT" });
     expect(r.status).toBe("CALCULATED");
     expect(r.productCode).toBe("PERSONAL");
-    expect(r.configVersionId).toBe("PERSONAL-1.3");
+    expect(r.configVersionId).toBe("PERSONAL-1.4");
   });
 
   it("keeps earlier private-sector config versions for reproducing saved scenarios", () => {
     const ids = getProduct("PERSONAL")!.versions.map((v) => `${v.id}:${v.status}`);
-    expect(ids).toEqual(["PERSONAL_PRIVATE-1.0:RETIRED", "PERSONAL_PRIVATE-1.1:RETIRED", "PERSONAL-1.2:RETIRED", "PERSONAL-1.3:ACTIVE"]);
+    expect(ids).toEqual(["PERSONAL_PRIVATE-1.0:RETIRED", "PERSONAL_PRIVATE-1.1:RETIRED", "PERSONAL-1.2:RETIRED", "PERSONAL-1.3:RETIRED", "PERSONAL-1.4:ACTIVE"]);
   });
 
   it("Public Sector Loan is active and offers the same repayment plans as Personal Loan", () => {

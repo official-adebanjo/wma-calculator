@@ -59,16 +59,11 @@ describe("Nano / Payday validation", () => {
     }
   });
 
-  it("payday early settlement caps interest at actual days used (LN-PAY-003)", () => {
+  it("payday has no liquidation: an early-settlement input is ignored", () => {
     const r = run("PAYDAY", { monthlyIncome: "400000", principal: "200000", tenorDays: 15, actualDaysUsed: 10 });
-    expect(secondary(r)).toMatchObject({ interest: "6000.00", settlementAmount: "206000.00", interestSaved: "3000.00" });
-    expect(r.secondary[0].ruleStatus).toBe("PROVISIONAL");
-  });
-
-  it("payday early settlement beyond tenor is rejected", () => {
-    const r = run("PAYDAY", { monthlyIncome: "400000", principal: "200000", tenorDays: 15, actualDaysUsed: 16 });
-    expect(r.status).toBe("ERROR");
-    expect(r.fieldErrors[0].field).toBe("actualDaysUsed");
+    expect(r.status).toBe("CALCULATED");
+    expect(r.secondary).toEqual([]);
+    expect(PRODUCTS.find((p) => p.code === "PAYDAY")!.fields.map((f) => f.name)).not.toContain("actualDaysUsed");
   });
 
   describe("payday income cap (≤ 50% of monthly income)", () => {
@@ -107,7 +102,7 @@ describe("Nano / Payday validation", () => {
     });
 
     it("uses the current configuration; earlier versions are retired", () => {
-      expect(pay("400000", "100000").configVersionId).toBe("PAYDAY-1.3");
+      expect(pay("400000", "100000").configVersionId).toBe("PAYDAY-1.4");
     });
   });
 

@@ -1,6 +1,6 @@
 import { addMonths } from "../dates";
 import { componentRounder, dec, type Dec, formatNgn } from "../money";
-import type { ScheduleRow, SecondaryAnalysis } from "../types";
+import type { FeatureToggle, LineItem, ScheduleRow, SecondaryAnalysis } from "../types";
 import {
   applyLatePenalty,
   applyLoanDeductions,
@@ -160,24 +160,58 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
   }
   out.warnings.push(...rateWarnings(ctx, rate.source));
 
-  // Early settlement preview (provisional).
+  // Liquidation after k installments: full (payoff) or partial (re-scheduled), with an optional fee.
   const k = ctx.inputs.settleAfterInstallments as number | undefined;
   const feature = ctx.config.features.earlySettlement;
-  if (k !== undefined && feature?.enabled) {
-    if (k >= n) {
-      out.status = "ERROR";
-      out.errorCode = "VALIDATION_FAILED";
-      out.fieldErrors.push({ field: "settleAfterInstallments", message: `Must be less than the tenor (${n} months).` });
-    } else {
+  const partialAmount = ctx.inputs.liquidationAmount !== undefined ? dec(ctx.inputs.liquidationAmount as string) : null;
+  const feePct = ctx.inputs.liquidationFeePercent as string | undefined;
+  const fail = (field: string, message: string) => {
+    out.status = "ERROR";
+    out.errorCode = "VALIDATION_FAILED";
+    out.fieldErrors.push({ field, message });
+    // An error must never carry plausible-looking figures.
+    for (const list of [out.summary, out.lineItems, out.steps, out.schedule, out.secondary, out.assumptions]) list.length = 0;
+    return out;
+  };
+  if (k === undefined && (partialAmount || feePct || ctx.inputs.liquidationOption)) {
+    return fail("settleAfterInstallments", "Enter the number of installments paid before the liquidation.");
+  }
+  if (k !== undefined && feature?.enabled && k >= n) return fail("settleAfterInstallments", `Must be less than the tenor (${n} months).`);
+  if (k !== undefined && partialAmount && ctx.config.features.partialLiquidation?.enabled) {
+    const remaining = dec(schedule[k].openingBalance);
+    if (partialAmount.gte(remaining)) {
+      return fail("liquidationAmount", `Must be less than the remaining principal (${formatNgn(m(remaining))}). Leave blank for full liquidation.`);
+    }
+    out.secondary.push(
+      partialLiquidation({
+        k,
+        n,
+        model,
+        monthlyRate,
+        remaining,
+        amount: partialAmount,
+        option: ctx.inputs.liquidationOption === "REDUCE_TENOR" ? "REDUCE_TENOR" : "REDUCE_INSTALLMENT",
+        equalPrincipal,
+        originalInterests: interests,
+        feePct,
+        startDate,
+        r,
+        feature: ctx.config.features.partialLiquidation,
+      }),
+    );
+  } else if (k !== undefined && feature?.enabled) {
+    {
       const row = schedule[k];
       const remaining = dec(row.openingBalance);
       const currentInterest = interests[k];
       const payoff = r(remaining.plus(currentInterest));
+      const fee = r(feePct ? payoff.times(feePct).dividedBy(100) : dec(0));
+      const totalPaid = r(payoff.plus(fee));
       const interestPaid = interests.slice(0, k).reduce((a, b) => a.plus(b), dec(0));
       const waived = r(totalInterest.minus(interestPaid).minus(currentInterest));
       const es: SecondaryAnalysis = {
         key: "earlySettlement",
-        title: "Early settlement preview",
+        title: "Full liquidation",
         status: "CALCULATED",
         ruleStatus: feature.ruleStatus,
         message: feature.note,
@@ -186,7 +220,9 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
           { key: "remainingPrincipal", label: "Remaining principal", value: m(remaining), kind: "money" },
           { key: "currentInterest", label: "Current month interest", value: m(currentInterest), kind: "money" },
           { key: "interestWaived", label: "Future interest waived", value: m(waived), kind: "money" },
-          { key: "payoff", label: "Payoff amount", value: m(payoff), kind: "money", emphasis: true },
+          { key: "payoff", label: "Payoff amount", value: m(payoff), kind: "money" },
+          { key: "liquidationFee", label: feePct ? `Liquidation fee (${feePct}% of payoff)` : "Liquidation fee", value: m(fee), kind: "money" },
+          { key: "totalPaid", label: "Total to pay", value: m(totalPaid), kind: "money", emphasis: true },
         ],
         steps: [
           { label: "Remaining principal", expression: `${m(principal)} − principal repaid in ${k} installments`, result: m(remaining) },
@@ -196,11 +232,15 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
             result: m(currentInterest),
           },
           { label: "Payoff", expression: `${m(remaining)} + ${m(currentInterest)}`, result: m(payoff) },
+          { label: "Liquidation fee", expression: feePct ? `${m(payoff)} × ${feePct}%` : "not applied", result: m(fee) },
+          { label: "Total to pay", expression: `${m(payoff)} + ${m(fee)}`, result: m(totalPaid) },
         ],
         lineItems: [
           { sequence: 1, label: "Remaining principal", amount: m(remaining), type: "BALANCE", explanation: `After ${k} installments.` },
           { sequence: 2, label: "Current month interest", amount: m(currentInterest), type: "INTEREST", explanation: "Interest for the active month." },
-          { sequence: 3, label: "Payoff amount", amount: m(payoff), type: "PAYOUT", explanation: "No early repayment penalty (loan specification)." },
+          { sequence: 3, label: "Payoff amount", amount: m(payoff), type: "PAYOUT", explanation: "Future interest waived; no penalty." },
+          { sequence: 4, label: "Liquidation fee", amount: m(fee), type: "FEE", explanation: feePct ? `${feePct}% of the payoff amount.` : "Not applied." },
+          { sequence: 5, label: "Total to pay", amount: m(totalPaid), type: "PAYOUT", explanation: "Payoff + liquidation fee." },
         ],
       };
       out.secondary.push(es);
@@ -209,3 +249,107 @@ export const personalLoan: CalculatorStrategy = (ctx) => {
 
   return out;
 };
+
+interface PartialLiquidationArgs {
+  k: number;
+  n: number;
+  model: Model;
+  monthlyRate: Dec;
+  remaining: Dec;
+  amount: Dec;
+  option: "REDUCE_INSTALLMENT" | "REDUCE_TENOR";
+  equalPrincipal: Dec;
+  originalInterests: Dec[];
+  feePct?: string;
+  startDate?: string;
+  r: (v: Dec) => Dec;
+  feature: FeatureToggle;
+}
+
+/**
+ * Partial liquidation after k installments: the amount reduces the principal at once, and the
+ * remaining installments are rebuilt on the reduced principal (interest also on the reduced
+ * principal for the equal-monthly plan), keeping either the remaining months or the monthly principal.
+ */
+function partialLiquidation(a: PartialLiquidationArgs): SecondaryAnalysis {
+  const { k, n, model, monthlyRate, remaining, amount, option, equalPrincipal, r } = a;
+  const newPrincipal = remaining.minus(amount);
+  const fee = r(a.feePct ? amount.times(a.feePct).dividedBy(100) : dec(0));
+  const monthsLeft = n - k;
+  const months = option === "REDUCE_INSTALLMENT" ? monthsLeft : Math.min(monthsLeft, newPrincipal.dividedBy(equalPrincipal).ceil().toNumber());
+  const principalPart = option === "REDUCE_INSTALLMENT" ? r(newPrincipal.dividedBy(months)) : equalPrincipal;
+
+  const rows: LineItem[] = [];
+  let balance = newPrincipal;
+  let paid = dec(0);
+  let newInterest = dec(0);
+  const installments: Dec[] = [];
+  for (let i = 1; i <= months; i++) {
+    const period = k + i;
+    const opening = balance;
+    // The final installment absorbs any remainder so the balance closes at zero.
+    const pp = i === months ? newPrincipal.minus(paid) : principalPart;
+    const interest = r(model === "FLAT" ? newPrincipal.times(monthlyRate) : opening.times(monthlyRate));
+    const installment = r(pp.plus(interest));
+    balance = opening.minus(pp);
+    paid = paid.plus(pp);
+    newInterest = newInterest.plus(interest);
+    installments.push(installment);
+    rows.push({
+      sequence: i,
+      label: `Installment ${period}${a.startDate ? ` (due ${addMonths(a.startDate, period)})` : ""}`,
+      amount: m(installment),
+      type: "INSTALLMENT",
+      explanation: `Principal ${m(pp)} + interest ${m(interest)}; balance after ${m(balance)}.`,
+    });
+  }
+  newInterest = r(newInterest);
+  const oldInterest = r(a.originalInterests.slice(k).reduce((x, y) => x.plus(y), dec(0)));
+  const saved = r(oldInterest.minus(newInterest));
+  const first = installments[0];
+  const last = installments[installments.length - 1];
+  const optionLabel = option === "REDUCE_INSTALLMENT" ? "Same tenor, lower installments" : "Same monthly principal, shorter tenor";
+
+  return {
+    key: "partialLiquidation",
+    title: "Partial liquidation",
+    status: "CALCULATED",
+    ruleStatus: a.feature.ruleStatus,
+    message: a.feature.note,
+    summary: [
+      { key: "installmentsPaid", label: "Installments paid", value: `${k} of ${n}`, kind: "text" },
+      { key: "remainingPrincipal", label: "Principal before liquidation", value: m(remaining), kind: "money" },
+      { key: "liquidationAmount", label: "Amount liquidated", value: m(amount), kind: "money" },
+      { key: "liquidationFee", label: a.feePct ? `Liquidation fee (${a.feePct}% of amount)` : "Liquidation fee", value: m(fee), kind: "money" },
+      { key: "totalPaid", label: "Paid now (amount + fee)", value: m(amount.plus(fee)), kind: "money" },
+      { key: "newPrincipal", label: "Principal after liquidation", value: m(newPrincipal), kind: "money" },
+      { key: "option", label: "Remaining payments", value: optionLabel, kind: "text" },
+      { key: "monthsLeft", label: "Installments left", value: months === monthsLeft ? `${months}` : `${months} (was ${monthsLeft})`, kind: "text" },
+      ...(a.startDate ? [{ key: "finalDueDate", label: "Final installment due", value: addMonths(a.startDate, k + months), kind: "text" as const }] : []),
+      { key: "interestBefore", label: "Remaining interest before", value: m(oldInterest), kind: "money" },
+      { key: "interestAfter", label: "Remaining interest after", value: m(newInterest), kind: "money" },
+      { key: "interestSaved", label: "Interest saved", value: m(saved), kind: "money" },
+      {
+        key: "newInstallment",
+        label: first.eq(last) ? "New monthly installment" : "New installments (first → last)",
+        value: first.eq(last) ? m(first) : `${m(first)} → ${m(last)}`,
+        kind: first.eq(last) ? "money" : "text",
+        emphasis: true,
+      },
+    ],
+    steps: [
+      { label: "Principal after liquidation", expression: `${m(remaining)} − ${m(amount)}`, result: m(newPrincipal) },
+      option === "REDUCE_INSTALLMENT"
+        ? { label: "Monthly principal", expression: `${m(newPrincipal)} ÷ ${months} months left`, result: m(principalPart) }
+        : { label: "Installments left", expression: `⌈${m(newPrincipal)} ÷ ${m(equalPrincipal)}⌉`, result: `${months}` },
+      {
+        label: "Monthly interest",
+        expression: model === "FLAT" ? `${m(newPrincipal)} × ${monthlyRate}` : `opening balance × ${monthlyRate}`,
+        result: model === "FLAT" ? m(r(newPrincipal.times(monthlyRate))) : "declines with the balance",
+      },
+      { label: "Liquidation fee", expression: a.feePct ? `${m(amount)} × ${a.feePct}%` : "not applied", result: m(fee) },
+      { label: "Interest saved", expression: `${m(oldInterest)} − ${m(newInterest)}`, result: m(saved) },
+    ],
+    lineItems: rows,
+  };
+}

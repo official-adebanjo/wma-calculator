@@ -73,9 +73,9 @@ describe("loan deductions (management fee on principal, WHT on interest)", () =>
     expect(r.lineItems.map((l) => l.sequence)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
-  it("does not change the early-settlement amount", () => {
-    const r = run("PAYDAY", { monthlyIncome: "400000", principal: "200000", tenorDays: 15, actualDaysUsed: 10, managementFeePercent: "1", withholdingTaxPercent: "10" });
-    expect(Object.fromEntries(r.secondary[0].summary.map((s) => [s.key, s.value])).settlementAmount).toBe("206000.00");
+  it("does not change the liquidation payoff", () => {
+    const r = run("PERSONAL", { principal: "6000000", tenorMonths: 6, interestModel: "FLAT", settleAfterInstallments: 2, managementFeePercent: "1", withholdingTaxPercent: "10" });
+    expect(Object.fromEntries(r.secondary[0].summary.map((s) => [s.key, s.value])).payoff).toBe("4120000.00");
   });
 
   it("income cap still applies to the principal applied for, not the disbursed amount", () => {

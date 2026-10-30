@@ -761,6 +761,75 @@ const [paydayV1_2Retired, paydayV1_3] = withLatePenalty(paydayV1_2, "1.3", "PAYD
 const [personalV1_2Retired, personalV1_3] = withLatePenalty(personalV1_2, "1.3", "PERSONAL-F4");
 const [publicSectorV1Retired, publicSectorV1_1] = withLatePenalty(publicSectorV1, "1.1", "PUBLIC-F2");
 
+// 2026-10-30: loan liquidation. Personal and Public Sector allow full or partial
+// liquidation (optional fee); Nano and Payday allow no liquidation.
+const LIQUIDATION_FEATURES: ProductConfigVersion["features"] = {
+  earlySettlement: {
+    enabled: true,
+    ruleStatus: "CONFIRMED",
+    note: "Full liquidation after k installments: remaining principal + current month's interest; future interest is waived. An optional fee (% of the amount paid) is added.",
+  },
+  partialLiquidation: {
+    enabled: true,
+    ruleStatus: "CONFIRMED",
+    note: "Partial liquidation after k installments reduces the principal immediately. Later interest is on the reduced principal (also on the equal-monthly plan). The tester chooses: same remaining months with lower installments, or the same monthly principal with a shorter tenor. An optional fee (% of the amount liquidated) is added.",
+  },
+};
+
+function withLiquidation(prev: ProductConfigVersion, version: string, formulaVersion: string, allowed: boolean): [ProductConfigVersion, ProductConfigVersion] {
+  const effective = "2026-10-28";
+  return [
+    { ...prev, status: "RETIRED", effectiveTo: effective },
+    {
+      ...prev,
+      id: `${prev.productCode}-${version}`,
+      version,
+      effectiveFrom: effective,
+      effectiveTo: null,
+      formulaVersion,
+      features: allowed
+        ? { ...prev.features, ...LIQUIDATION_FEATURES }
+        : { ...prev.features, earlySettlement: { enabled: false, ruleStatus: "CONFIRMED", note: "No liquidation (early or partial) for this loan type." } },
+      ruleNotes: [
+        ...prev.ruleNotes,
+        allowed
+          ? { id: "LIQ-R1", status: "CONFIRMED", note: `${LIQUIDATION_FEATURES.partialLiquidation.note} Full liquidation: ${LIQUIDATION_FEATURES.earlySettlement.note}` }
+          : { id: "LIQ-R1", status: "CONFIRMED", note: "No liquidation (early or partial) is offered for this loan type." },
+      ],
+      sources: [...prev.sources, { document: "RFS product rule (QA request)", section: "Loan liquidation — 2026-10-30" }],
+    },
+  ];
+}
+
+const [paydayV1_3Retired, paydayV1_4] = withLiquidation(paydayV1_3, "1.4", "PAYDAY-F5", false);
+const [personalV1_3Retired, personalV1_4] = withLiquidation(personalV1_3, "1.4", "PERSONAL-F5", true);
+const [publicSectorV1_1Retired, publicSectorV1_2] = withLiquidation(publicSectorV1_1, "1.2", "PUBLIC-F3", true);
+
+const LIQUIDATION_FIELDS: InputFieldDef[] = [
+  {
+    kind: "integer",
+    name: "settleAfterInstallments",
+    label: "Liquidation: after installments paid",
+    required: false,
+    min: 0,
+    max: 23,
+    help: "Optional. Number of installments already paid when the customer liquidates.",
+  },
+  { kind: "money", name: "liquidationAmount", label: "Liquidation: amount (₦)", required: false, min: "0.01", help: "Optional. Leave blank for full liquidation; a smaller amount is a partial liquidation." },
+  {
+    kind: "select",
+    name: "liquidationOption",
+    label: "Partial liquidation: remaining payments",
+    required: false,
+    options: [
+      { value: "REDUCE_INSTALLMENT", label: "Same tenor, lower installments" },
+      { value: "REDUCE_TENOR", label: "Same monthly principal, shorter tenor" },
+    ],
+    help: "How the remaining installments change after a partial liquidation.",
+  },
+  { kind: "percent", name: "liquidationFeePercent", label: "Liquidation fee", required: false, max: "100", help: "Optional. % of the amount paid, from the Admin Portal." },
+];
+
 export const PRODUCTS: ProductDefinition[] = [
   {
     code: "NANO",
@@ -797,18 +866,8 @@ export const PRODUCTS: ProductDefinition[] = [
       ...LOAN_DEDUCTION_FIELDS,
       ...LATE_PENALTY_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display the due date." },
-      {
-        kind: "integer",
-        name: "actualDaysUsed",
-        label: "Early settlement: actual days used",
-        required: false,
-        min: 1,
-        max: 30,
-        unit: "days",
-        help: "Optional, provisional. Must not exceed the tenor.",
-      },
     ],
-    versions: [paydayV1Retired, paydayV1_1Retired, paydayV1_2Retired, paydayV1_3],
+    versions: [paydayV1Retired, paydayV1_1Retired, paydayV1_2Retired, paydayV1_3Retired, paydayV1_4],
   },
   {
     code: "PERSONAL",
@@ -832,17 +891,9 @@ export const PRODUCTS: ProductDefinition[] = [
       ...LOAN_DEDUCTION_FIELDS,
       ...LATE_PENALTY_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display installment due dates." },
-      {
-        kind: "integer",
-        name: "settleAfterInstallments",
-        label: "Early settlement: after installment #",
-        required: false,
-        min: 0,
-        max: 23,
-        help: "Optional, provisional. Number of installments already paid.",
-      },
+      ...LIQUIDATION_FIELDS,
     ],
-    versions: [personalV1Retired, personalV1_1Retired, personalV1_2Retired, personalV1_3],
+    versions: [personalV1Retired, personalV1_1Retired, personalV1_2Retired, personalV1_3Retired, personalV1_4],
   },
   {
     code: "PUBLIC_SECTOR",
@@ -876,17 +927,9 @@ export const PRODUCTS: ProductDefinition[] = [
       ...LOAN_DEDUCTION_FIELDS,
       ...LATE_PENALTY_FIELDS,
       { kind: "date", name: "startDate", label: "Disbursement date", required: false, help: "Optional. Used to display installment due dates." },
-      {
-        kind: "integer",
-        name: "settleAfterInstallments",
-        label: "Early settlement: after installment #",
-        required: false,
-        min: 0,
-        max: 23,
-        help: "Optional, provisional. Number of installments already paid. No penalty applied.",
-      },
+      ...LIQUIDATION_FIELDS,
     ],
-    versions: [publicSectorDraftRetired, publicSectorV1Retired, publicSectorV1_1],
+    versions: [publicSectorDraftRetired, publicSectorV1Retired, publicSectorV1_1Retired, publicSectorV1_2],
   },
   {
     code: "RTN",

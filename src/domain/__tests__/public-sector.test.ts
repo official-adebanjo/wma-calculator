@@ -75,11 +75,11 @@ describe("Public Sector Loan — calculation (same as Personal Loan)", () => {
     expect(run({ tenorMonths: 24 }).status).toBe("CALCULATED");
   });
 
-  it("early settlement preview: same payoff as Personal Loan, no penalty", () => {
+  it("full liquidation: same payoff as Personal Loan, future interest waived", () => {
     // After 2 of 12 equal installments: remaining 5,000,000 + current month's interest 240,000.
     const r = run({ settleAfterInstallments: 2 });
     const es = Object.fromEntries(r.secondary[0].summary.map((s) => [s.key, s.value]));
     expect(es).toMatchObject({ remainingPrincipal: "5000000.00", currentInterest: "240000.00", payoff: "5240000.00" });
-    expect(r.secondary[0].message).toContain("No penalty");
+    expect(r.secondary[0].message).toContain("future interest is waived");
   });
 });
