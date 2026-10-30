@@ -648,6 +648,28 @@ const rwinV1_0: ProductConfigVersion = {
   sources: [...rwinV0_2.sources, { document: "RFS RWIN product decisions (approved answers)", section: "A–B, 2026-10-29" }],
 };
 
+// 2026-10-30: RFS RWIN answers on accrual start, WHT, withdrawals and rollover.
+const rwinV1_0Retired: ProductConfigVersion = { ...rwinV1_0, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
+const RWIN_1_1_NOTES: Record<string, string> = {
+  "RWIN-R4": "No maturity date, so no premature exit and no rollover: the plan runs until full liquidation. The first 30 days are locked; after that, partial withdrawal or full liquidation is allowed at any time with no penalty.",
+  "RWIN-R5": "Interest accrues from the funds-confirmed date (not quote or application): daily interest = end-of-day balance × 14% ÷ 365, fixed 365-day basis. The end-of-day balance includes top-ups and is reduced by withdrawals.",
+  "RWIN-R6": "Paid every 90 days from the funds-confirmed date. Reinvestment toggle on: net interest is added to the balance at each payout and then earns at the plan's rate. Off: interest is paid out. Accrued interest earns nothing until it is added at a payout.",
+};
+const rwinV1_1: ProductConfigVersion = {
+  ...rwinV1_0,
+  id: "RWIN-1.1",
+  version: "1.1",
+  formulaVersion: "RWIN-F2",
+  ruleNotes: [
+    ...rwinV1_0.ruleNotes
+      .filter((n) => n.id !== "RWIN-R7" && n.id !== "RWIN-R9")
+      .map((n) => (RWIN_1_1_NOTES[n.id] ? { ...n, note: RWIN_1_1_NOTES[n.id] } : n)),
+    { id: "RWIN-R7", status: "CONFIRMED", note: "10% WHT on all RWIN interest: deducted at each 90-day payout (also when reinvested, so only net interest is added) and on accrued interest paid at full liquidation." },
+    { id: "RWIN-R9", status: "CONFIRMED", note: "A partial withdrawal must leave at least ₦50,000, otherwise full liquidation is offered; interest accrued so far stays in the plan until the next payout. Full liquidation pays the balance + accrued interest − 10% WHT." },
+  ],
+  sources: [...rwinV1_0.sources, { document: "RFS RWIN product decisions (approved answers)", section: "Accrual, WHT, withdrawals, rollover — 2026-10-30" }],
+};
+
 const publicSectorV1: ProductConfigVersion = {
   id: "PUBLIC_SECTOR-1.0",
   productCode: "PUBLIC_SECTOR",
@@ -968,25 +990,27 @@ export const PRODUCTS: ProductDefinition[] = [
     name: "RWIN — Rosabon Wealth Investment Note",
     category: "INVESTMENT",
     status: "ACTIVE",
-    description: "Open-ended plan at a flat 14% p.a., simple interest accruing daily, paid or reinvested every 90 days. First 30 days locked.",
+    description: "Open-ended plan at a flat 14% p.a., simple interest accruing daily, paid or reinvested every 90 days. First 30 days locked, then withdraw any time with no penalty.",
     fields: [
       { kind: "money", name: "principal", label: "Amount (₦)", required: true, min: "50000.00", help: "Minimum ₦50,000; no maximum." },
-      { kind: "integer", name: "daysHeld", label: "Projection: days held", required: true, min: 1, max: 3650, unit: "days", help: "No maturity date: project the plan to any day after the start date." },
+      { kind: "integer", name: "daysHeld", label: "Projection: days from funds-confirmed date", required: true, min: 1, max: 3650, unit: "days", help: "No maturity date: project the plan to any day. Shows what a full liquidation that day would pay." },
       {
         kind: "select",
         name: "interestOption",
-        label: "90-day interest",
+        label: "Reinvestment toggle",
         required: true,
         options: [
-          { value: "PAY_OUT", label: "Pay out" },
-          { value: "REINVEST", label: "Reinvest (compound)" },
+          { value: "PAY_OUT", label: "Off: pay out interest every 90 days" },
+          { value: "REINVEST", label: "On: add net interest to the balance" },
         ],
       },
-      { kind: "date", name: "valueDate", label: "Start date", required: false, help: "Optional. Used for payout dates and the end of the 30-day lock." },
+      { kind: "date", name: "valueDate", label: "Funds-confirmed date", required: false, help: "Optional. Interest accrues from this date. Used for payout dates and the end of the 30-day lock." },
       { kind: "money", name: "topUpAmount", label: "Top-up: amount (₦)", required: false, min: "0.01", help: "Optional. No minimum; merges into the balance at the same rate." },
-      { kind: "integer", name: "topUpDay", label: "Top-up: on day", required: false, min: 1, max: 3649, unit: "days", help: "Days after the start date when the top-up lands." },
+      { kind: "integer", name: "topUpDay", label: "Top-up: on day", required: false, min: 1, max: 3649, unit: "days", help: "Days after the funds-confirmed date when the top-up lands." },
+      { kind: "integer", name: "withdrawalDay", label: "Withdrawal: on day", required: false, min: 1, max: 3650, unit: "days", help: "Optional. From day 30 (after the lock). No penalty." },
+      { kind: "money", name: "withdrawalAmount", label: "Withdrawal: amount (₦)", required: false, min: "0.01", help: "Optional. Leave blank for full liquidation. A partial withdrawal must leave at least ₦50,000." },
     ],
-    versions: [rwinV1Retired, rwinV0_2Retired, rwinV1_0],
+    versions: [rwinV1Retired, rwinV0_2Retired, rwinV1_0Retired, rwinV1_1],
   },
 ];
 

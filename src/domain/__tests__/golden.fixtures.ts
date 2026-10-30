@@ -128,7 +128,7 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RW-001",
     productCode: "RWIN",
-    configVersionId: "RWIN-1.0",
+    configVersionId: "RWIN-1.1",
     inputs: { principal: "1000000", daysHeld: 90, interestOption: "PAY_OUT" },
     expectedStatus: "CALCULATED",
     // 1,000,000 × 14% × 90 ÷ 365 = 34,520.547945 → 34,520.55 paid; WHT 10% = 3,452.055 → 3,452.06; net 31,068.49
