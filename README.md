@@ -1,8 +1,8 @@
 # RFS Loan & Investment Calculator
 
 Internal QA reference tool for Rosabon Financial Services loan and investment products, built from
-`RFS_Loan_Investment_Calculator_Architecture.txt`, `Rosabon_QA_Calculation_Matrix.xlsx` and
-`Rosabon_Investment_Deduced_Calculation_Rules.docx`.
+`RFS_Loan_Investment_Calculator_Architecture.txt`, `Rosabon_QA_Calculation_Matrix.xlsx`,
+`Rosabon_Investment_Deduced_Calculation_Rules.docx` and REAP Product Operating Logic (the source of truth for REAP).
 
 It calculates estimates with a full, reproducible breakdown. It never creates loans or investments, or moves money.
 
@@ -18,7 +18,7 @@ It calculates estimates with a full, reproducible breakdown. It never creates lo
 | All loans | — | Optional management fee (% of principal) and withholding tax (% of interest), deducted from the amount disbursed. Optional late-payment penalty: simple interest accrued daily on the overdue amount at an entered daily rate, capped at 7 days (email communications take priority) |
 | RTN — Rosabon Treasury Note | Active | Approved rules (RTN-1.3): at maturity and upfront confirmed (OPEN-9 resolved: ₦34,682.41), full-precision rounding, early and partial withdrawal (penalty 100/80/60/40/0% of the rate by tenor elapsed), top-up, rollover, payment/notice dates, and upfront early withdrawal (payout = booked principal + 0.90 × (interest accrued on booked principal − penal charge)) |
 | RWIN — Rosabon Wealth Investment Note | Active | Open-ended plan (RWIN-1.1): flat 14% p.a. on any amount from ₦50,000, simple interest accruing daily from the funds-confirmed date (end-of-day balance × 14% ÷ 365), paid out or reinvested (net of 10% WHT) every 90 days, top-ups merge into the balance. After the 30-day lock: partial withdrawal (must leave ₦50,000) or full liquidation (balance + accrued − 10% WHT), no penalty, no rollover |
-| REAP — Rosabon Easy Access Plan | Validation only | No approved rate table, so no projection is ever shown. Records target amount/date |
+| REAP — Rosabon Earning Plan | Active | REAP-1.0 from REAP Product Operating Logic: 3/6/12/24 months at 14.5/16.5/18/20% p.a., compounded monthly from the plan start date; deposits by month; Top-Up resets the tenor; early termination forfeits 50% (before day 180) or 20% of interest, then 10% WHT; savings lock, forfeiture waiver and rollover. Some document worked totals do not follow its formula (REAP-R9) |
 | Public Sector Loan | Active | Same calculation as Personal Loan (equal monthly or declining) with an entered corridor rate; pre-eligibility: net salary ≥ corridor minimum net salary. Full or partial liquidation as Personal Loan; late-payment penalty as all loans |
 
 Open rules from the QA matrix (OPEN-RTN-01…07, OPEN-LOAN-01…05, etc.) are shown in the UI next to each product.

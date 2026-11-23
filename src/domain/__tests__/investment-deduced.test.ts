@@ -56,17 +56,11 @@ describe("RTN — deduced rules document", () => {
 });
 
 describe("REAP and RWIN — deduced rules document", () => {
-  it("REAP is the Rosabon Easy Access Plan with target amount and date, validation only", () => {
-    const r = run("REAP", { principal: "10000", planType: "OPEN", targetAmount: "500000", targetDate: "2027-12-31" });
-    expect(r.productName).toBe("REAP — Rosabon Easy Access Plan");
-    expect(r.status).toBe("VALIDATION_ONLY");
-    expect(summary(r)).toMatchObject({ targetAmount: "500000.00", targetDate: "2027-12-31" });
-    expect(r.summary.find((s) => s.key === "targetAmount")?.kind).toBe("money");
-    expect(r.lineItems).toEqual([]);
-  });
-
-  it("REAP minimum ₦10,000 still applies", () => {
-    expect(run("REAP", { principal: "9999.99", planType: "OPEN" }).status).toBe("ERROR");
+  it("REAP is now the Rosabon Earning Plan (REAP Product Operating Logic supersedes the deduced rules)", () => {
+    const r = run("REAP", { tenorMonths: "12", monthlyTarget: "10000" });
+    expect(r.productName).toBe("REAP — Rosabon Earning Plan");
+    expect(r.status).toBe("CALCULATED");
+    expect(run("REAP", { tenorMonths: "12", monthlyTarget: "9999.99" }).status).toBe("ERROR");
   });
 
   it("RWIN is the Rosabon Wealth Investment Note; ₦50,000 minimum confirmed (₦20,000 superseded)", () => {

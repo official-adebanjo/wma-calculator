@@ -602,6 +602,53 @@ const reapV0_2: ProductConfigVersion = {
   sources: [...reapV1.sources, DEDUCED_SOURCE("3. REAP — Rosabon Easy Access Plan")],
 };
 
+// 2026-11-23: "REAP Product Operating Logic" is the source of truth for REAP.
+const REAP_DOC = "REAP Product Operating Logic";
+const reapV0_2Retired: ProductConfigVersion = { ...reapV0_2, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
+const reapV1_0: ProductConfigVersion = {
+  ...reapV0_2,
+  id: "REAP-1.0",
+  version: "1.0",
+  effectiveFrom: INVEST_EFFECTIVE,
+  effectiveTo: null,
+  minimumPrincipal: "10000.00",
+  maximumPrincipal: null,
+  tenorUnit: "MONTH",
+  tenorOptions: [3, 6, 12, 24],
+  rateModel: "TIERED",
+  rateProvenance: "APPROVED",
+  // Full precision; only output figures are rounded (the document asks QA to verify at full precision).
+  roundingPolicy: { mode: "FINAL", scale: 2, rounding: "HALF_UP" },
+  tax: { withholdingTaxPercent: "10" },
+  reap: {
+    rates: [
+      { tenorMonths: 3, annualRatePercent: "14.5" },
+      { tenorMonths: 6, annualRatePercent: "16.5" },
+      { tenorMonths: 12, annualRatePercent: "18" },
+      { tenorMonths: 24, annualRatePercent: "20" },
+    ],
+    minimumOpeningDeposit: "10000.00",
+    prorationDays: 30,
+    forfeitureSchedule: [
+      { fromDay: 0, forfeitPercent: "50" },
+      { fromDay: 180, forfeitPercent: "20" },
+    ],
+  },
+  formulaVersion: "REAP-F1",
+  ruleNotes: [
+    { id: "REAP-R1", status: "CONFIRMED", note: "Individuals only. Minimum opening deposit ₦10,000 and minimum monthly target ₦10,000; no maximum. Several independent plans may be held." },
+    { id: "REAP-R2", status: "CONFIRMED", note: "Rate fixed by tenor for the life of the plan: 3 months 14.5%, 6 months 16.5%, 12 months 18.0%, 24 months 20.0% p.a. No other tenor or rate source." },
+    { id: "REAP-R3", status: "CONFIRMED", note: "Compounded monthly: closing(n) = (closing(n−1) + deposits in month n) × (1 + annual rate ÷ 12). Months run from the plan start date. Missed deposits do not change the rate. No upfront interest." },
+    { id: "REAP-R4", status: "CONFIRMED", note: "At maturity: payout = deposits + gross interest × 90% (10% WHT). Interest stops at maturity; rollover is all-or-nothing at the current Rate Guide rate for the new tenor." },
+    { id: "REAP-R5", status: "CONFIRMED", note: "Early termination forfeits 50% of gross interest to date before day 180 and 20% from day 180; WHT is then 10% of the remaining interest. Principal is never forfeited. Part-month interest = balance × monthly rate × days ÷ 30." },
+    { id: "REAP-R6", status: "CONFIRMED", note: "No partial withdrawal. An optional savings lock blocks early termination unless a Compliance-approved Admin Unlock is applied; a Compliance-approved forfeiture waiver sets the forfeiture to 0%." },
+    { id: "REAP-R7", status: "CONFIRMED", note: "\"Make a deposit\" keeps the maturity date. A \"Top-Up\" restarts the tenor (and the forfeiture clock) from the top-up date; interest accrued so far is kept." },
+    { id: "REAP-R8", status: "OPEN", note: "Whether interest accrues during an administrative freeze (Compliance). Not modelled." },
+    { id: "REAP-R9", status: "OPEN", note: "Document worked totals that do not follow its own formula: §4.2 month 6 (≈₦312,810.05; formula ₦316,149.71) and month 12 (₦660,970.13; formula ₦661,841.48, payout ₦655,657.33), Scenario D (≈₦122,738; formula ₦124,568.01), Scenario E (≈₦853,620; formula ₦862,392.65). Scenario C's payout is ₦80,762.74 at full precision (document ₦80,762.75)." },
+  ],
+  sources: [{ document: REAP_DOC, section: "Sections 1–8 and Scenarios A–E" }],
+};
+
 const rwinV1Retired: ProductConfigVersion = { ...rwinV1, status: "RETIRED", effectiveTo: INVEST_EFFECTIVE };
 const rwinV0_2: ProductConfigVersion = {
   ...rwinV1,
@@ -1006,27 +1053,68 @@ export const PRODUCTS: ProductDefinition[] = [
   },
   {
     code: "REAP",
-    name: "REAP — Rosabon Easy Access Plan",
+    name: "REAP — Rosabon Earning Plan",
     category: "INVESTMENT",
-    status: "VALIDATION_ONLY",
-    statusReason: "Approved REAP rate table and return formula are missing (OPEN-REAP-01). Inputs are validated; no return is projected.",
-    description: "Goal-based savings plan with a target amount and date (OPEN or LOCKED). Validation only until rates and formula are approved.",
+    status: "ACTIVE",
+    description: "Goal-based savings for individuals: monthly deposits over 3–24 months at a tenor-fixed rate, compounded monthly. Early termination forfeits part of the interest.",
     fields: [
-      { kind: "money", name: "principal", label: "Amount (₦)", required: true, min: "10000.00" },
       {
         kind: "select",
-        name: "planType",
-        label: "Plan type",
+        name: "tenorMonths",
+        label: "Tenor",
         required: true,
         options: [
-          { value: "LOCKED", label: "Locked" },
-          { value: "OPEN", label: "Open" },
+          { value: "3", label: "3 months (14.5% p.a.)" },
+          { value: "6", label: "6 months (16.5% p.a.)" },
+          { value: "12", label: "12 months (18.0% p.a.)" },
+          { value: "24", label: "24 months (20.0% p.a.)" },
         ],
       },
-      { kind: "money", name: "targetAmount", label: "Target amount (₦)", required: false, min: "10000.00", help: "Optional. The savings goal." },
-      { kind: "date", name: "targetDate", label: "Target date", required: false, help: "Optional. When the goal should be reached." },
+      { kind: "money", name: "monthlyTarget", label: "Monthly savings target (₦)", required: true, min: "10000.00", help: "Deposited at the start of every month unless deposits by month are entered." },
+      {
+        kind: "moneyList",
+        name: "depositsByMonth",
+        label: "Deposits by month (₦)",
+        required: false,
+        maxItems: 48,
+        help: "Optional. Actual deposits for month 1, 2, 3…, separated by semicolons or spaces (0 for a missed month). Months not listed get ₦0.",
+      },
+      { kind: "date", name: "planStartDate", label: "Plan start date", required: false, help: "Optional. Months run from this date. Needed for a top-up or early termination." },
+      { kind: "money", name: "topUpAmount", label: "Top-Up: amount (₦)", required: false, min: "0.01", help: "Optional. An explicit Top-Up restarts the tenor from its date. Ordinary extra deposits go in deposits by month." },
+      { kind: "date", name: "topUpDate", label: "Top-Up: date", required: false },
+      { kind: "date", name: "terminationDate", label: "Early termination: date", required: false, help: "Optional. Full withdrawal before maturity (no partial withdrawals)." },
+      {
+        kind: "select",
+        name: "savingsLock",
+        label: "Savings lock",
+        required: false,
+        options: [
+          { value: "NONE", label: "No lock" },
+          { value: "LOCKED", label: "Locked (blocks early termination)" },
+          { value: "UNLOCKED", label: "Locked, Admin Unlock applied" },
+        ],
+      },
+      {
+        kind: "select",
+        name: "forfeitureWaiver",
+        label: "Forfeiture waiver",
+        required: false,
+        options: [
+          { value: "NONE", label: "Not applied" },
+          { value: "WAIVED", label: "Waived (Compliance-approved)" },
+        ],
+      },
+      {
+        kind: "select",
+        name: "rolloverTenorMonths",
+        label: "Rollover: new tenor",
+        required: false,
+        options: [3, 6, 12, 24].map((t) => ({ value: String(t), label: `${t} months` })),
+        help: "Optional. Rolls the full maturity payout into a new plan.",
+      },
+      { kind: "money", name: "rolloverMonthlyTarget", label: "Rollover: new monthly target (₦)", required: false, min: "10000.00", help: "Optional. Leave blank for ₦0 (the rolled-over balance just compounds)." },
     ],
-    versions: [reapV1Retired, reapV0_2],
+    versions: [reapV1Retired, reapV0_2Retired, reapV1_0],
   },
   {
     code: "RWIN",

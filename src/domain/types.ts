@@ -101,6 +101,15 @@ export type InputFieldDef =
       label: string;
       required: boolean;
       help?: string;
+    }
+  | {
+      /** A list of amounts (₦0 allowed), one per period, separated by semicolons or spaces. */
+      kind: "moneyList";
+      name: string;
+      label: string;
+      required: boolean;
+      maxItems: number;
+      help?: string;
     };
 
 export interface RtnRateCell {
@@ -184,6 +193,17 @@ export interface ProductConfigVersion {
   };
   /** RWIN open-ended plan: interest paid every payoutCycleDays; the first lockDays are locked. */
   rwin?: { dayCountBasis: 365; payoutCycleDays: number; lockDays: number };
+  /**
+   * REAP goal-based savings: tenor-tied annual rates, monthly compounding from the plan
+   * start date, part-month interest prorated over prorationDays, and interest forfeiture on
+   * early termination by days elapsed (each band applies from fromDay inclusive).
+   */
+  reap?: {
+    rates: { tenorMonths: number; annualRatePercent: string }[];
+    minimumOpeningDeposit: string;
+    prorationDays: number;
+    forfeitureSchedule: { fromDay: number; forfeitPercent: string }[];
+  };
   /**
    * Up-front loan deductions. Percentages are entered per calculation (they are
    * configured on the RFS Admin Portal); blank means not applied.

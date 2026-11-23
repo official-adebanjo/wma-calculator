@@ -86,6 +86,21 @@ function fieldSchema(field: InputFieldDef) {
         }
         return value.toString();
       }
+      case "moneyList": {
+        // Semicolons, spaces or new lines separate items; a comma is only a thousands separator,
+        // so "40000,40000" is rejected instead of being read as one amount.
+        const items = typeof raw === "string" ? raw.trim().split(/[;\s]+/).filter(Boolean) : [];
+        const bad = items.find((i) => !/^(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/.test(i));
+        if (items.length === 0 || bad !== undefined) {
+          ctx.addIssue({ code: "custom", message: `Enter amounts separated by semicolons or spaces, e.g. "50000; 100000; 0"${bad ? ` ("${bad}" is not an amount)` : ""}.` });
+          return z.NEVER;
+        }
+        if (items.length > field.maxItems) {
+          ctx.addIssue({ code: "custom", message: `At most ${field.maxItems} amounts.` });
+          return z.NEVER;
+        }
+        return items.map((i) => dec(i.replace(/,/g, "")).toFixed(2)).join(";");
+      }
       case "date": {
         const s = typeof raw === "string" ? raw.trim() : "";
         if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(Date.parse(`${s}T00:00:00Z`))) {

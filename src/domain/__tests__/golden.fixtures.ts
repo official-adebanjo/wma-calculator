@@ -119,11 +119,14 @@ export const GOLDEN_FIXTURES: GoldenFixture[] = [
   {
     id: "RR-001",
     productCode: "REAP",
-    configVersionId: "REAP-0.2",
-    inputs: { principal: "10000", planType: "LOCKED" },
-    expectedStatus: "VALIDATION_ONLY",
-    source: "QA matrix RR-001",
-    approval: "Validation only",
+    configVersionId: "REAP-1.0",
+    inputs: { tenorMonths: "12", monthlyTarget: "50000" },
+    expectedStatus: "CALCULATED",
+    // ₦50,000 a month for 12 months at 18% (1.5% a month), compounded monthly.
+    // The document's ₦660,970.13 / ₦654,873.12 do not follow its own formula (REAP-R9).
+    expectedSummary: { deposits: "600000.00", finalBalance: "661841.48", grossInterest: "61841.48", tax: "6184.15", netInterest: "55657.33", payout: "655657.33" },
+    source: "REAP Product Operating Logic §4.2 / Scenario A (recomputed)",
+    approval: "Source of truth 2026-11-23",
   },
   {
     id: "RW-001",

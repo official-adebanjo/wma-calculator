@@ -1,9 +1,9 @@
 import { dailyProratedLoan } from "./calculators/daily";
 import { personalLoan } from "./calculators/personal";
+import { reap } from "./calculators/reap";
 import { rtn } from "./calculators/rtn";
 import { rwin } from "./calculators/rwin";
 import type { CalculatorStrategy } from "./calculators/shared";
-import { validationOnly } from "./calculators/validation-only";
 import { getProduct } from "./config/products";
 import { resolveActiveConfig } from "./config/resolve";
 import { buildInputSchema, type QaOptions } from "./inputs";
@@ -16,7 +16,7 @@ const STRATEGIES: Record<string, CalculatorStrategy> = {
   PERSONAL: personalLoan,
   PUBLIC_SECTOR: personalLoan,
   RTN: rtn,
-  REAP: validationOnly,
+  REAP: reap,
   RWIN: rwin,
 };
 

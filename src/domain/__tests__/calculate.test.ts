@@ -216,18 +216,12 @@ describe("RTN", () => {
 });
 
 describe("status gates and invariants", () => {
-  it("REAP never returns a projection, even with a QA rate override", () => {
-    for (const [code, inputs] of [["REAP", { principal: "500000", planType: "OPEN", tenorMonths: 12 }]] as const) {
-      const r = run(code, inputs, { rateOverridePercent: "30" });
-      expect(r.status).toBe("VALIDATION_ONLY");
-      expect(r.lineItems).toEqual([]);
-      expect(r.summary.some((s) => s.kind === "money" && s.key !== "principal")).toBe(false);
-      expect(r.warnings.map((w) => w.code)).toContain("QA_OVERRIDE_IGNORED");
-    }
+  it("every product now calculates (none is validation-only)", () => {
+    expect(PRODUCTS.filter((p) => p.status !== "ACTIVE").map((p) => p.code)).toEqual([]);
   });
 
   it("REAP/RWIN minimums (RR-001, RW-001)", () => {
-    expect(run("REAP", { principal: "9999.99", planType: "LOCKED" }).status).toBe("ERROR");
+    expect(run("REAP", { tenorMonths: "12", monthlyTarget: "9999.99" }).status).toBe("ERROR");
     expect(run("RWIN", { principal: "49999.99" }).status).toBe("ERROR");
   });
 

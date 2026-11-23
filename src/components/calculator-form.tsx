@@ -173,6 +173,18 @@ export function CalculatorForm({
                   <DatePicker id={id} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} invalid={Boolean(error)} describedBy={describedBy} />
                 )}
               />
+            ) : f.kind === "moneyList" ? (
+              <Input
+                id={id}
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="e.g. 50000; 100000; 0; 50000"
+                className="tabular-nums"
+                aria-invalid={Boolean(error)}
+                aria-describedby={describedBy}
+                {...register(f.name)}
+              />
             ) : f.kind === "percent" ? (
               <div className="relative">
                 <Input
